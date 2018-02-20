@@ -2,7 +2,7 @@
 Team and repository tags
 ========================
 
-.. image:: http://governance.openstack.org/badges/openstack-ansible-plugins.svg
+.. image:: http://governance.openstack.org/badges/ansible-config_template.svg
     :target: http://governance.openstack.org/reference/tags/index.html
 
 .. Change things from this point on

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# openstack-ansible-plugins documentation build configuration file, created by
+# Config Template documentation build configuration file, created by
 # sphinx-quickstart on Mon Apr 13 20:42:26 2015.
 #
 # This file is execfile()d with the current directory set to its
@@ -51,12 +51,11 @@ master_doc = 'index'
 # General information about the project.
 author = 'OpenStack-Ansible Contributors'
 category = 'Miscellaneous'
-copyright = '2014-2016, OpenStack-Ansible Contributors'
-description = 'OpenStack-Ansible deploys OpenStack environments using Ansible.'
-project = 'OpenStack-Ansible'
-role_name = 'plugins'
-target_name = 'openstack-ansible-' + role_name
-title = 'OpenStack-Ansible Documentation: ' + role_name + 'role'
+copyright = '2014-2018, OpenStack-Ansible Contributors'
+description = 'Config Template allow flexible .yaml, .ini, .json modifications.'
+project = 'Config Template'
+target_name = 'ansible-config_template'
+title = 'Config Template Documentation'
 
 # The link to the browsable source code (for the left hand menu)
 oslosphinx_cgit_link = (
@@ -220,7 +219,7 @@ html_last_updated_fmt = '%Y-%m-%d %H:%M'
 # html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'openstack-ansible-pluginsdoc'
+htmlhelp_basename = 'ansible-config_templatedoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 
@@ -242,9 +241,9 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'openstack-ansible-plugins.tex',
-     'openstack-ansible-plugins Documentation',
-     'openstack-ansible-plugins contributors', 'manual'),
+    (master_doc, 'ansible-config_template.tex',
+     'ansible-config_template Documentation',
+     'ansible-config_template contributors', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -273,8 +272,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'openstack-ansible-plugins',
-     'openstack-ansible-plugins Documentation',
+    (master_doc, 'ansible-config_template',
+     'ansible-config_template Documentation',
      [author], 1)
 ]
 
@@ -288,9 +287,9 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'openstack-ansible-plugins',
-     'openstack-ansible-plugins Documentation',
-     author, 'openstack-ansible-plugins', 'One line description of project.',
+    (master_doc, 'ansible-config_template',
+     'ansible-config_template Documentation',
+     author, 'ansible-config_template', 'One line description of project.',
      'Miscellaneous'),
 ]
 
