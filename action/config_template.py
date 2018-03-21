@@ -16,13 +16,11 @@
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import (absolute_import, division, print_function)
-__metaclass__ = type
 
 try:
     import ConfigParser
 except ImportError:
     import configparser as ConfigParser
-
 import datetime
 try:
     from StringIO import StringIO
@@ -35,13 +33,13 @@ import re
 import time
 import yaml
 import tempfile as tmpfilelib
-
-
 from ansible.plugins.action import ActionBase
 from ansible.module_utils._text import to_bytes, to_text
 from ansible import constants as C
 from ansible import errors
 from ansible.parsing.yaml.dumper import AnsibleDumper
+
+__metaclass__ = type
 
 
 CONFIG_TYPES = {
@@ -427,7 +425,8 @@ class ActionModule(ActionBase):
                     new_items=value,
                     list_extend=list_extend
                 )
-            elif not isinstance(value, int) and (',' in value or '\n' in value):
+            elif (not isinstance(value, int) and
+                  (',' in value or '\n' in value)):
                 base_items[key] = re.split(',|\n', value)
                 base_items[key] = [i.strip() for i in base_items[key] if i]
             elif isinstance(value, list):

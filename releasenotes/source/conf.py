@@ -221,7 +221,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    ('index', 'OpenStackAnsibleReleaseNotes.tex', u'OpenStack-Ansible Release Notes Documentation',
+    ('index', 'OpenStackAnsibleReleaseNotes.tex',
+     u'OpenStack-Ansible Release Notes Documentation',
      u'OpenStack-Ansible Developers', 'manual'),
 ]
 
@@ -251,7 +252,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'openstackansiblereleasenotes', u'OpenStack-Ansible Release Notes Documentation',
+    ('index', 'openstackansiblereleasenotes',
+     u'OpenStack-Ansible Release Notes Documentation',
      [u'OpenStack-Ansible Developers'], 1)
 ]
 
@@ -265,7 +267,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    ('index', 'OpenStackAnsibleReleaseNotes', u'OpenStack-Ansible Release Notes Documentation',
+    ('index', 'OpenStackAnsibleReleaseNotes',
+     u'OpenStack-Ansible Release Notes Documentation',
      u'OpenStack-Ansible Developers', 'OpenStackAnsibleReleaseNotes',
      'One line description of project.',
      'Miscellaneous'),
