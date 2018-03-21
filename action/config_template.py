@@ -643,6 +643,10 @@ class ActionModule(ActionBase):
             module_args=new_module_args,
             task_vars=task_vars
         )
+        if self._play_context.diff:
+            rc['diff'] = []
+            rc['diff'].append(self._get_diff_data(_vars['dest'],
+                              transferred_data, task_vars))
         if self._task.args.get('content'):
             os.remove(_vars['source'])
         return rc
