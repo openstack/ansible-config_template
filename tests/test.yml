@@ -222,17 +222,17 @@
       foo:
         baz: "bar"
       section1:
-        key1: "value1"
-        key2: "value2"
-        key3: "value3"
-        key4: "value4"
-        key5: "value5"
-        key6: "value6"
-        key7: "value7"
-        key8: "value8"
-        key9: "value9"
-        key10: "value10"
-        key11: "value11"
+        key1: "String1"
+        key2: "string2"
+        key3: "string3"
+        key4: "string4"
+        key5: "string5"
+        key6: "string6"
+        key7: 1
+        key8: 2
+        key9: 3
+        key10: 10
+        key11: 11
       section2:
         key1: "value1"
       section3:
@@ -246,15 +246,16 @@
       section7:
         key1: "value1"
       section8:
-        key1: "value1"
+        key1: 1
       section9:
-        key1: "value1"
+        key1: 1
       section10:
-        key1: "value1"
+        key1: 1
       section11:
-        key1: "value1"
+        key1: 1
     test_config_yml_overrides:
       list_one:
         - four
+        - 4
     test_config_yml_hostvars_overrides:
       test_hostvar: "{{ ansible_default_ipv4.address }}"

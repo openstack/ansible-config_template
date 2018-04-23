@@ -213,14 +213,20 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
             if line[0].isspace() and cursect is not None and optname:
                 value = line.strip()
                 if value:
-                    if isinstance(cursect[optname], (tuple, set)):
-                        _temp_item = list(cursect[optname])
-                        del cursect[optname]
-                        cursect[optname] = _temp_item
-                    elif isinstance(cursect[optname], (str, unicode)):
-                        _temp_item = [cursect[optname]]
-                        del cursect[optname]
-                        cursect[optname] = _temp_item
+                    try:
+                        if isinstance(cursect[optname], (tuple, set)):
+                            _temp_item = list(cursect[optname])
+                            del cursect[optname]
+                            cursect[optname] = _temp_item
+                        elif isinstance(cursect[optname], (str, unicode)):
+                            _temp_item = [cursect[optname]]
+                            del cursect[optname]
+                            cursect[optname] = _temp_item
+                    except NameError:
+                        if isinstance(cursect[optname], (bytes, str)):
+                            _temp_item = [cursect[optname]]
+                            del cursect[optname]
+                            cursect[optname] = _temp_item
                     cursect[optname].append(value)
             else:
                 mo = self.SECTCRE.match(line)
