@@ -72,6 +72,7 @@ class MultiKeyDict(dict):
     >>> print(z)
     ... {'a': tuple(['1', '2']), 'c': {'a': 1}, 'b': ['a', 'b', 'c']}
     """
+
     def __setitem__(self, key, value):
         if key in self:
             if isinstance(self[key], tuple):
@@ -134,9 +135,11 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
     key = var3
     key = var2
     """
+
     def __init__(self, *args, **kwargs):
         self._comments = {}
         self.ignore_none_type = bool(kwargs.pop('ignore_none_type', True))
+        self.default_section = str(kwargs.pop('default_section', 'DEFAULT'))
         ConfigParser.RawConfigParser.__init__(self, *args, **kwargs)
 
     def _write(self, fp, section, key, item, entry):
@@ -165,28 +168,33 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
             self._write(fp, section, key, value, entry)
 
     def write(self, fp):
+        def _do_write(section_name, section, section_bool=False):
+            _write_comments(section_name)
+            fp.write("[%s]\n" % section_name)
+            for key, value in sorted(section.items()):
+                _write_comments(section_name, optname=key)
+                self._write_check(fp, key=key, value=value,
+                                  section=section_bool)
+            else:
+                fp.write("\n")
+
         def _write_comments(section, optname=None):
             comsect = self._comments.get(section, {})
             if optname in comsect:
                 fp.write(''.join(comsect[optname]))
 
+        if self.default_section != 'DEFAULT' and self._sections.get(
+                self.default_section, False):
+            _do_write(self.default_section,
+                      self._sections[self.default_section],
+                      section_bool=True)
+            self._sections.pop(self.default_section)
+
         if self._defaults:
-            _write_comments('DEFAULT')
-            fp.write("[%s]\n" % 'DEFAULT')
-            for key, value in sorted(self._defaults.items()):
-                _write_comments('DEFAULT', optname=key)
-                self._write_check(fp, key=key, value=value)
-            else:
-                fp.write("\n")
+            _do_write('DEFAULT', self._defaults)
 
         for section in sorted(self._sections):
-            _write_comments(section)
-            fp.write("[%s]\n" % section)
-            for key, value in sorted(self._sections[section].items()):
-                _write_comments(section, optname=key)
-                self._write_check(fp, key=key, value=value, section=True)
-            else:
-                fp.write("\n")
+            _do_write(section, self._sections[section], section_bool=True)
 
     def _read(self, fp, fpname):
         comments = []
@@ -293,7 +301,8 @@ class ActionModule(ActionBase):
                                     config_overrides,
                                     resultant,
                                     list_extend=True,
-                                    ignore_none_type=True):
+                                    ignore_none_type=True,
+                                    default_section='DEFAULT'):
         """Returns string value from a modified config file.
 
         :param config_overrides: ``dict``
@@ -307,7 +316,8 @@ class ActionModule(ActionBase):
             config = ConfigTemplateParser(
                 allow_no_value=True,
                 dict_type=MultiKeyDict,
-                ignore_none_type=ignore_none_type
+                ignore_none_type=ignore_none_type,
+                default_section=default_section
             )
             config.optionxform = str
         except Exception:
@@ -376,7 +386,8 @@ class ActionModule(ActionBase):
                                      config_overrides,
                                      resultant,
                                      list_extend=True,
-                                     ignore_none_type=True):
+                                     ignore_none_type=True,
+                                     default_section='DEFAULT'):
         """Returns config json
 
         Its important to note that file ordering will not be preserved as the
@@ -390,7 +401,8 @@ class ActionModule(ActionBase):
         merged_resultant = self._merge_dict(
             base_items=original_resultant,
             new_items=config_overrides,
-            list_extend=list_extend
+            list_extend=list_extend,
+            default_section=default_section
         )
         return json.dumps(
             merged_resultant,
@@ -402,7 +414,8 @@ class ActionModule(ActionBase):
                                      config_overrides,
                                      resultant,
                                      list_extend=True,
-                                     ignore_none_type=True):
+                                     ignore_none_type=True,
+                                     default_section='DEFAULT'):
         """Return config yaml.
 
         :param config_overrides: ``dict``
@@ -537,6 +550,8 @@ class ActionModule(ActionBase):
         # name with out the '=' or ':' suffix. The default is true.
         ignore_none_type = self._task.args.get('ignore_none_type', True)
 
+        default_section = self._task.args.get('default_section', 'DEFAULT')
+
         return True, dict(
             source=source,
             dest=user_dest,
@@ -544,7 +559,8 @@ class ActionModule(ActionBase):
             config_type=config_type,
             searchpath=searchpath,
             list_extend=list_extend,
-            ignore_none_type=ignore_none_type
+            ignore_none_type=ignore_none_type,
+            default_section=default_section
         )
 
     def run(self, tmp=None, task_vars=None):
@@ -618,7 +634,8 @@ class ActionModule(ActionBase):
                 config_overrides=_vars['config_overrides'],
                 resultant=resultant,
                 list_extend=_vars.get('list_extend', True),
-                ignore_none_type=_vars.get('ignore_none_type', True)
+                ignore_none_type=_vars.get('ignore_none_type', True),
+                default_section=_vars.get('default_section', 'DEFAULT')
             )
 
         # Re-template the resultant object as it may have new data within it
@@ -651,6 +668,7 @@ class ActionModule(ActionBase):
         new_module_args.pop('config_type', None)
         new_module_args.pop('list_extend', None)
         new_module_args.pop('ignore_none_type', None)
+        new_module_args.pop('default_section', None)
         # Content from config_template is converted to src
         new_module_args.pop('content', None)
 
@@ -663,7 +681,7 @@ class ActionModule(ActionBase):
         if self._play_context.diff:
             rc['diff'] = []
             rc['diff'].append(self._get_diff_data(_vars['dest'],
-                              transferred_data, task_vars))
+                                                  transferred_data, task_vars))
         if self._task.args.get('content'):
             os.remove(_vars['source'])
         return rc

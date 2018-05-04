@@ -58,6 +58,12 @@ options:
     choices:
       - True
       - False
+  default_section:
+    description:
+      - Specify the default section for INI configuration files. This is the
+        section that will appear at the top of the configuration file. For
+        example 'global'.
+    default: 'DEFAULT'
 
 author: Kevin Carter
 """
@@ -68,6 +74,7 @@ EXAMPLES = """
       src: templates/test.ini.j2
       dest: /tmp/test.ini
       config_overrides: {}
+      top_ini_section: 'global'
       config_type: ini
 
   - name: run config template json
