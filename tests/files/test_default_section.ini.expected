@@ -1,0 +1,8 @@
+[global]
+test1 = 1
+test2 = 2
+
+[section1]
+setting1 = 1
+setting2 = 2
+
