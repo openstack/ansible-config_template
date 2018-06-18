@@ -672,6 +672,9 @@ class ActionModule(ActionBase):
         # Content from config_template is converted to src
         new_module_args.pop('content', None)
 
+        # Set the diff data before running the copy module
+        _diff = self._get_diff_data(_vars['dest'], transferred_data, task_vars)
+
         # Run the copy module
         rc = self._execute_module(
             module_name='copy',
@@ -680,8 +683,7 @@ class ActionModule(ActionBase):
         )
         if self._play_context.diff:
             rc['diff'] = []
-            rc['diff'].append(self._get_diff_data(_vars['dest'],
-                                                  transferred_data, task_vars))
+            rc['diff'].append(_diff)
         if self._task.args.get('content'):
             os.remove(_vars['source'])
         return rc
