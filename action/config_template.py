@@ -30,6 +30,7 @@ import json
 import os
 import pwd
 import re
+import six
 import time
 import yaml
 import tempfile as tmpfilelib
@@ -228,7 +229,7 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
                             _temp_item = list(cursect[optname])
                             del cursect[optname]
                             cursect[optname] = _temp_item
-                        elif isinstance(cursect[optname], (str, unicode)):
+                        elif isinstance(cursect[optname], six.text_type):
                             _temp_item = [cursect[optname]]
                             del cursect[optname]
                             cursect[optname] = _temp_item
