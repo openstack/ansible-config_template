@@ -26,6 +26,7 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
+import copy
 import json
 import os
 import pwd
@@ -297,8 +298,87 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
                     options[name] = _temp_item
 
 
+class DictCompare(object):
+    """
+    Calculate the differece between two dictionaries.
+
+    Example Usage:
+    >>> base_dict = {'test1': 'val1', 'test2': 'val2', 'test3': 'val3'}
+    >>> base_dict = {'test1': 'val2', 'test3': 'val3', 'test4': 'val3', 'test5': 'val5'}
+    >>> dc = DictCompare(base_dict, new_dict)
+    >>> dc.added()
+    ... ['test5', 'test4']
+    >>> dc.removed()
+    ... ['test2']
+    >>> dc.changed()
+    ... ['test1']
+    """
+    def __init__(self, base_dict, new_dict):
+        self.new_dict, self.base_dict = new_dict, base_dict
+        self.base_items, self.new_items = set(self.base_dict.keys()), set(self.new_dict.keys())
+        self.intersect = self.new_items.intersection(self.base_items)
+
+    def added(self):
+        return self.new_items - self.intersect
+
+    def removed(self):
+        return self.base_items - self.intersect
+
+    def changed(self):
+        return set(x for x in self.intersect if self.base_dict[x] != self.new_dict[x])
+
 class ActionModule(ActionBase):
     TRANSFERS_FILES = True
+
+    def compare_dicts(self,
+                      base_dict,
+                      new_dict):
+        """Returns dict of differences between 2 dicts and bool indicating if there are differences
+
+        :param base_dict: ``dict``
+        :param new_dict: ``dict``
+        :returns: ``dict``, ``bool``
+        """
+        changed=False
+        mods={'add': {}, 'rm': {}, 'chg': {}}
+        compare_dict = DictCompare(base_dict, new_dict)
+
+        for s in compare_dict.changed():
+            changed=True
+            if type(base_dict[s]) is not dict:
+                mods['chg'] = {s: {'current_val': base_dict[s], 'new_val': new_dict[s]}}
+                continue
+
+            diff = DictCompare(base_dict[s], new_dict[s])
+            for a in diff.added():
+                if s not in mods['add']:
+                    mods['add'][s] = {a: new_dict[s][a]}
+                else:
+                    mods['add'][s][a] = new_dict[s][a]
+
+            for r in diff.removed():
+                if s not in mods['rm']:
+                    mods['rm'][s] = {r: new_dict[s][r]}
+                else:
+                    mods['rm'][s][r] = new_dict[s][r]
+            
+            for c in diff.changed():
+                if s not in mods['chg']:
+                    mods['chg'][s] = {c: {'current_val': base_dict[s][c], 'new_val': new_dict[s][c]}}
+                else:
+                    mods['chg'][s][c] = {'current_val': base_dict[s][c], 'new_val': new_dict[s][c]}
+
+        for s in compare_dict.added():
+            changed=True
+            mods['add'][s] = new_dict[s]
+            
+        for s in compare_dict.removed():
+            changed=True
+            mods['rm'][s] = base_dict[s]
+
+            
+        return mods, changed
+
 
     def return_config_overrides_ini(self,
                                     config_overrides,
@@ -306,11 +386,11 @@ class ActionModule(ActionBase):
                                     list_extend=True,
                                     ignore_none_type=True,
                                     default_section='DEFAULT'):
-        """Returns string value from a modified config file.
+        """Returns string value from a modified config file, a dict of changes and bool indicating a change occured.
 
         :param config_overrides: ``dict``
         :param resultant: ``str`` || ``unicode``
-        :returns: ``str``
+        :returns: ``str``, ``dict``, ``bool``
         """
         # If there is an exception loading the RawConfigParser The config obj
         #  is loaded again without the extra option. This is being done to
@@ -328,6 +408,7 @@ class ActionModule(ActionBase):
 
         config_object = StringIO(resultant)
         config.readfp(config_object)
+        config_dict_base = {s:dict(config.items(s)) for s in config.sections()}
         for section, items in config_overrides.items():
             # If the items value is not a dictionary it is assumed that the
             #  value is a default item for this config type.
@@ -361,10 +442,12 @@ class ActionModule(ActionBase):
         else:
             config_object.close()
 
+        config_dict_new = {s:dict(config.items(s)) for s in config.sections()}
+        mods, changed = self.compare_dicts(config_dict_base, config_dict_new)
         resultant_stringio = StringIO()
         try:
             config.write(resultant_stringio)
-            return resultant_stringio.getvalue()
+            return resultant_stringio.getvalue(), mods, changed
         finally:
             resultant_stringio.close()
 
@@ -391,27 +474,28 @@ class ActionModule(ActionBase):
                                      list_extend=True,
                                      ignore_none_type=True,
                                      default_section='DEFAULT'):
-        """Returns config json
+        """Returns config json, dict of changes and bool indicating if there are changes
 
         Its important to note that file ordering will not be preserved as the
         information within the json file will be sorted by keys.
 
         :param config_overrides: ``dict``
         :param resultant: ``str`` || ``unicode``
-        :returns: ``str``
+        :returns: ``str``, ``dict``, ``bool``
         """
         original_resultant = json.loads(resultant)
+        original_holder = copy.deepcopy(original_resultant)
         merged_resultant = self._merge_dict(
             base_items=original_resultant,
             new_items=config_overrides,
-            list_extend=list_extend,
-            default_section=default_section
+            list_extend=list_extend
         )
+        mods, changed = self.compare_dicts(original_holder, merged_resultant)
         return json.dumps(
             merged_resultant,
             indent=4,
             sort_keys=True
-        )
+        ), mods, changed
 
     def return_config_overrides_yaml(self,
                                      config_overrides,
@@ -419,11 +503,11 @@ class ActionModule(ActionBase):
                                      list_extend=True,
                                      ignore_none_type=True,
                                      default_section='DEFAULT'):
-        """Return config yaml.
+        """Return config yaml, dict of changes and bool indicating if there are changes.
 
         :param config_overrides: ``dict``
         :param resultant: ``str`` || ``unicode``
-        :returns: ``str``
+        :returns: ``str``, ``dict``, ``bool``
         """
         original_resultant = yaml.safe_load(resultant)
         merged_resultant = self._merge_dict(
@@ -431,12 +515,13 @@ class ActionModule(ActionBase):
             new_items=config_overrides,
             list_extend=list_extend
         )
+        mods, changed = self.compare_dicts(original_resultant, merged_resultant)
         return yaml.dump(
             merged_resultant,
             Dumper=IDumper,
             default_flow_style=False,
             width=1000,
-        )
+        ), mods, changed
 
     def _merge_dict(self, base_items, new_items, list_extend=True):
         """Recursively merge new_items into base_items.
@@ -631,9 +716,11 @@ class ActionModule(ActionBase):
             self._templar._available_variables
         )
 
+        mods={'add': {}, 'rm': {}, 'chg': {}}
+        changed=False
         if _vars['config_overrides']:
             type_merger = getattr(self, CONFIG_TYPES.get(_vars['config_type']))
-            resultant = type_merger(
+            resultant, mods, changed = type_merger(
                 config_overrides=_vars['config_overrides'],
                 resultant=resultant,
                 list_extend=_vars.get('list_extend', True),
@@ -691,6 +778,8 @@ class ActionModule(ActionBase):
             module_args=new_module_args,
             task_vars=task_vars
         )
+        rc['changed'] = changed
+        rc['diff'] = mods
         if self._task.args.get('content'):
             os.remove(_vars['source'])
         return rc
