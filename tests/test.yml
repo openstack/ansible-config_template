@@ -13,222 +13,109 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Setup the host
+- include: common/test-prepare-keys.yml
+
+- include: common/test-prepare-host.yml
+
+# Temporary work around for issue with lxc_host where on second run after
+# all iptables rules have been removed, the lxc_host role is not checking
+# that the rules are defined and adding them back in if they are not.
+- name: Add iptables rules back in
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  become: yes
+
+  vars:
+    do_not_fail_lint: true
+
+  tasks:
+    - name: Ensure lxc iptables rules
+      command: /usr/local/bin/lxc-system-manage iptables-create
+      when: do_not_fail_lint
+
+- include: common/test-prepare-containers.yml
+
 - name: Test config_template
   hosts: localhost
   connection: local
   gather_facts: yes
+
   tasks:
-    # Test basic function of config_template
-    - name: Template test INI template
-      config_template:
-        src: "{{ playbook_dir }}/templates/test.ini"
-        dest: "/tmp/test.ini"
-        config_overrides: "{{ test_config_ini_overrides }}"
-        config_type: "ini"
-
-    - name: Read test.ini
-      slurp:
-        src: /tmp/test.ini
-      register: ini_file
-    - debug:
-        msg: "ini - {{ ini_file.content | b64decode }}"
-    - name: Validate output
-      assert:
-        that:
-          - "(lookup('ini', 'new_key section=DEFAULT file=/tmp/test.ini')) == 'new_value'"
-          - "(lookup('ini', 'baz section=foo file=/tmp/test.ini')) == 'bar'"
-
-    # Test basic function of config_template with content instead of src
-    - name: Template test INI template
-      config_template:
-        content: "{{ lookup('file', playbook_dir + '/templates/test.ini') }}"
-        dest: "/tmp/test_with_content.ini"
-        config_overrides: "{{ test_config_ini_overrides }}"
-        config_type: "ini"
-
-    - name: Read test.ini
-      slurp:
-        src: /tmp/test_with_content.ini
-      register: ini_file_with_content
-    - debug:
-        msg: "ini - {{ ini_file_with_content.content | b64decode }}"
-    - name: Validate output
-      assert:
-        that:
-          - "(lookup('ini', 'new_key section=DEFAULT file=/tmp/test_with_content.ini')) == 'new_value'"
-          - "(lookup('ini', 'baz section=foo file=/tmp/test_with_content.ini')) == 'bar'"
-
-    # Test list additions in config_template
-    - name: Template test YML template
-      config_template:
-        src: "{{ playbook_dir }}/templates/test.yml"
-        dest: "/tmp/test_extend.yml"
-        config_overrides: "{{ test_config_yml_overrides }}"
-        config_type: "yaml"
-        list_extend: True
-
-    - name: Read test_extend.yml
-      slurp:
-        src: /tmp/test_extend.yml
-      register: extend_file
     - name: Read expected test_extend.yml
       slurp:
         src: "{{ playbook_dir }}/files/test_extend.yml.expected"
       register: extend_file_expected
-    - debug:
-        msg: "extend - {{ extend_file.content | b64decode }}"
-    - debug:
-        msg: "extend.expected - {{ extend_file_expected.content | b64decode }}"
-    - name: Compare files
-      assert:
-        that:
-          - "(extend_file.content | b64decode) == (extend_file_expected.content | b64decode)"
 
-    # Test list replacement in config_template
-    - name: Template test YML template
-      config_template:
-        src: "{{ playbook_dir }}/templates/test.yml"
-        dest: "/tmp/test_no_extend.yml"
-        config_overrides: "{{ test_config_yml_overrides }}"
-        config_type: "yaml"
-        list_extend: False
-    - name: Read test_no_extend.yml
-      slurp:
-        src: /tmp/test_no_extend.yml
-      register: no_extend_file
     - name: Read expected test_no_extend.yml
       slurp:
         src: "{{ playbook_dir }}/files/test_no_extend.yml.expected"
       register: no_extend_file_expected
-    - debug:
-        msg: "no_extend - {{ no_extend_file.content | b64decode }}"
-    - debug:
-        msg: "no_extend.expected - {{ no_extend_file_expected.content | b64decode }}"
-    - name: Compare files
-      assert:
-        that:
-          - "(no_extend_file.content | b64decode) == (no_extend_file_expected.content | b64decode)"
 
-    # Test dumping hostvars using config overrides
-    - name: Template test YML template with hostvars override
-      config_template:
-        src: "{{ playbook_dir }}/templates/test.yml"
-        dest: "/tmp/test_hostvars.yml"
-        config_overrides: "{{ test_config_yml_hostvars_overrides }}"
-        config_type: "yaml"
-    - name: Read test_hostvars.yml
-      slurp:
-        src: /tmp/test_hostvars.yml
-      register: hostvars_file
-    - debug:
-        msg: "hostvars - {{ (hostvars_file.content | b64decode | from_yaml).test_hostvar }}"
-    - debug:
-        msg: "hostvars.expected - {{ test_config_yml_hostvars_overrides.test_hostvar }}"
-    - name: Compare files
-      assert:
-        that:
-          - "((hostvars_file.content | b64decode | from_yaml).test_hostvar) == (test_config_yml_hostvars_overrides.test_hostvar)"
-
-
-    # Test content attribute with a dictionary input and config_type equal to 'json'
-    - name: Template test JSON template with content attribute
-      config_template:
-        dest: "/tmp/test_content_no_overrides.json"
-        config_overrides: {}
-        config_type: "json"
-        content: "{{ lookup('file', playbook_dir ~ '/templates/test.json') | from_json }}"
-    - name: Read test_content_no_overrides.json
-      slurp:
-        src: /tmp/test_content_no_overrides.json
-      register: content_no_overrides_file
     - name: Read expected test_content_no_overrides.json
       slurp:
         src: "{{ playbook_dir }}/files/test_content_no_overrides.json.expected"
       register: content_no_overrides_file_expected
-    - debug:
-        msg: "content_no_overrides.json - {{ content_no_overrides_file.content | b64decode | from_json }}"
-    - debug:
-        msg: "content_no_overrides.json.expected - {{ content_no_overrides_file_expected.content | b64decode | from_json }}"
-    # NOTE (alextricity25): The config_template module doesn't use ordered dicts when reading and writing json
-    # data, so we can't guarantee that the string literal of both file's content will be the same. Instead, we compare
-    # the content after transforming it into a dictionary.
-    - name: Compare file content
+
+    - import_tasks: test-common-tasks.yml
+
+    - import_tasks: test-common-tasks.yml
+      delegate_to: container1
+
+  handlers:
+    - name: test_ini check diff
       assert:
         that:
-          - "(content_no_overrides_file.content | b64decode | from_json) == (content_no_overrides_file_expected.content | b64decode | from_json)"
+          - test_ini.diff[0].prepared|from_json == diff_ini
 
-    # Test the ignore_none_type attribute when set to False
-    - name: Template test with ignore_none_type set to false
-      config_template:
-        src: "{{ playbook_dir }}/templates/test_ignore_none_type.ini"
-        dest: "/tmp/test_ignore_none_type.ini"
-        config_overrides: "{{ test_config_ini_overrides }}"
-        config_type: "ini"
-        ignore_none_type: False
-    - name: Read test_ignore_none_type.ini
-      slurp:
-        src: /tmp/test_ignore_none_type.ini
-      register: test_ignore_none_type
-    - debug:
-        msg: "test_ignore_none_type.ini - {{ test_ignore_none_type.content | b64decode }}"
-    - name: Validate output has valueless options printed out
+    - name: test_with_content_ini check diff
       assert:
         that:
-          - "{{ test_ignore_none_type.content | b64decode | search('(?m)^india$') }}"
-          - "{{ test_ignore_none_type.content | b64decode | search('(?m)^juliett kilo$') }}"
+          - test_with_content_ini.diff[0].prepared|from_json == diff_ini
 
-        # Test basic function of config_template
-    - name: Template test INI comments
-      config_template:
-        src: "{{ playbook_dir }}/templates/test_with_comments.ini"
-        dest: "/tmp/test_with_comments.ini"
-        config_overrides: "{{ test_config_ini_overrides }}"
-        config_type: "ini"
-      tags: test
+    - name: test_extend_yml check diff
+      assert:
+        that:
+          - test_extend_yml.diff[0].prepared|from_json == diff_extend_yml
 
-    - name: Read test.ini
-      slurp:
-        src: /tmp/test_with_comments.ini
-      register: ini_file
-      tags: test
+    - name: test_no_extend_yml check diff
+      assert:
+        that:
+          - test_no_extend_yml.diff[0].prepared|from_json == diff_no_extend_yml
 
-    - debug:
-        msg: "ini - {{ ini_file.content | b64decode }}"
-    - name: Validate output
+    - name: test_hostvars_yml check diff
+      assert:
+        that:
+          - test_hostvars_yml.diff[0].prepared|from_yaml == diff_hostvars_yml
+
+    - name: test_content_no_overrides_json check diff
+      assert:
+        that:
+          - test_content_no_overrides_json.diff[0].prepared|from_json == diff_content_no_overrides_json
+
+    - name: test_ignore_none_type_ini check diff
+      assert:
+        that:
+          - test_ignore_none_type_ini.diff[0].prepared|from_json == diff_ignore_none_type_ini
+
+    - name: test_with_comments_ini check diff
       tags: test
       assert:
         that:
-          - "(lookup('ini', 'new_key section=DEFAULT file=/tmp/test_with_comments.ini')) == 'new_value'"
-          - "(lookup('ini', 'baz section=foo file=/tmp/test_with_comments.ini')) == 'bar'"
-          - "{{ ini_file.content | b64decode | search('#This is a comment')}}"
-          - "{{ ini_file.content | b64decode | search('# A default section comment\n# broken into multiple lines\n\\[DEFAULT\\]')}}"
+          - test_with_comments_ini.diff[0].prepared|from_json == diff_with_comments_ini
 
-    - name: Template multiple times to assert no changes
-      config_template:
-        src: "{{ playbook_dir }}/templates/test_with_comments.ini"
-        dest: "/tmp/test_with_comments.ini"
-        config_type: "ini"
-        config_overrides: "{{ item[1] }}"
-      register: template_changed
-      failed_when: template_changed  is changed
-      with_nested:
-        - [ 0, 1, 2 ]
-        - [ "{{ test_config_ini_overrides }}" ]
+    - name: test_diff_ini check diff
+      tags: test
+      assert:
+        that:
+          - test_diff_ini.diff[0].prepared|from_json == diff_diff_ini
 
-    - name: Put down default_section_expected file
-      copy:
-        src: "{{ playbook_dir }}/files/test_default_section.ini.expected"
-        dest: "/tmp/test_default_section.ini"
-
-    - name: Template using default_section
-      config_template:
-        src: "{{ playbook_dir }}/templates/test_default_section.ini"
-        dest: "/tmp/test_default_section.ini"
-        config_type: "ini"
-        config_overrides: "{{ test_default_section_overrides }}"
-        default_section: "global"
-      register: template_changed
-      failed_when: template_changed  is changed
+    - name: test_diff_remove_ini check diff
+      tags: test
+      assert:
+        that:
+          - test_diff_remove_ini.diff[0].prepared|from_json == diff_diff_remove_ini
 
   vars:
     test_config_ini_overrides:
@@ -279,3 +166,198 @@
         test2: 2
       section1:
         setting2: 2
+    test_diff_overrides:
+      section1:
+        baz: "hotel"
+      section3:
+        alfa: "bravo"
+    diff_with_comments_ini:
+      added:
+        DEFAULT:
+          new_key: "new_value"
+          test_hosts: "\n+_unicode\n1\nstring"
+        bar: {}
+        foo:
+          baz: "bar"
+        section1:
+          key1: "String1"
+          key10: "10"
+          key11: "11"
+          key2: "string2"
+          key3: "string3"
+          key4: "string4"
+          key5: "string5"
+          key6: "string6"
+          key7: "1"
+          key8: "2"
+          key9: "3"
+        section10:
+          key1: "1"
+        section11:
+          key1: "1"
+        section2:
+          key1: "value1"
+        section3:
+          key1: "value1"
+        section4:
+          key1: "value1"
+        section5:
+          key1: "value1"
+        section6:
+          key1: "value1"
+        section7:
+          key1: "value1"
+        section8:
+          key1: "1"
+        section9:
+          key1: "1"
+      changed: {}
+      removed: {}
+    diff_ini:
+      added:
+        DEFAULT:
+          new_key: "new_value"
+        bar: {}
+        foo:
+          baz: "bar"
+        section1:
+          key1: "String1"
+          key10: "10"
+          key11: "11"
+          key2: "string2"
+          key3: "string3"
+          key4: "string4"
+          key5: "string5"
+          key6: "string6"
+          key7: "1"
+          key8: "2"
+          key9: "3"
+        section10:
+          key1: "1"
+        section11:
+          key1: "1"
+        section2:
+          key1: "value1"
+        section3:
+          key1: "value1"
+        section4:
+          key1: "value1"
+        section5:
+          key1: "value1"
+        section6:
+          key1: "value1"
+        section7:
+          key1: "value1"
+        section8:
+          key1: "1"
+        section9:
+          key1: "1"
+      changed: {}
+      removed: {}
+    diff_extend_yml:
+      added:
+        list_one:
+          - "one"
+          - "two"
+          - "three"
+          - "four"
+          - 4
+        list_two:
+          - "one"
+          - "two"
+      changed: {}
+      removed: {}
+    diff_no_extend_yml:
+      added:
+        list_one:
+          - "four"
+          - 4
+        list_two:
+          - "one"
+          - "two"
+      changed: {}
+      removed: {}
+    diff_hostvars_yml:
+      added:
+        list_one:
+          - "one"
+          - "two"
+          - "three"
+        list_two:
+          - "one"
+          - "two"
+        test_hostvar: "{{ ansible_default_ipv4.address }}"
+      changed: {}
+      removed: {}
+    diff_ignore_none_type_ini:
+      added:
+        DEFAULT:
+          new_key: "new_value"
+        alfa:
+          bravo: "charlie"
+          delta: "echo"
+        foo:
+          baz: "bar"
+        foxtrot:
+          golf: "hotel"
+          india: null
+          juliett kilo: null
+          lima: "mike"
+        section1:
+          key1: "String1"
+          key10: "10"
+          key11: "11"
+          key2: "string2"
+          key3: "string3"
+          key4: "string4"
+          key5: "string5"
+          key6: "string6"
+          key7: "1"
+          key8: "2"
+          key9: "3"
+        section10:
+          key1: "1"
+        section11:
+          key1: "1"
+        section2:
+          key1: "value1"
+        section3:
+          key1: "value1"
+        section4:
+          key1: "value1"
+        section5:
+          key1: "value1"
+        section6:
+          key1: "value1"
+        section7:
+          key1: "value1"
+        section8:
+          key1: "1"
+        section9:
+          key1: "1"
+      changed: {}
+      removed: {}
+    diff_content_no_overrides_json:
+      added:
+        alfa: "bravo"
+        charlie: "echo"
+        foxtrot:
+          golf: "hotel"
+      changed: {}
+      removed: {}
+    diff_diff_ini:
+      added:
+        section3:
+          alfa: "bravo"
+      changed:
+        section1:
+          baz:
+            current_val: "baz"
+            new_val: "hotel"
+      removed: {}
+    diff_diff_remove_ini:
+      added: {}
+      changed: {}
+      removed:
+        section2:
+          foo: "bar"

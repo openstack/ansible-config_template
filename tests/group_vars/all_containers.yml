@@ -20,11 +20,8 @@ container_networks:
     address: "{{ ansible_host }}"
     bridge: "br-mgmt"
     interface: "eth1"
-    netmask: "255.255.252.0"
+    netmask: "255.255.255.0"
     type: "veth"
-    static_routes:
-      - cidr: 10.100.100.0/24
-        gateway: 10.100.100.1
 
 properties: {}
 
