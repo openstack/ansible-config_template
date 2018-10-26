@@ -20,7 +20,7 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        - openstack-ansible-python3-ubuntu-xenial
+        - openstack-ansible-python3-ubuntu-bionic
     gate:
       jobs:
-        - openstack-ansible-python3-ubuntu-xenial
+        - openstack-ansible-python3-ubuntu-bionic
