@@ -304,17 +304,17 @@ class DictCompare(object):
 
     Example Usage:
     >>> base_dict = {'test1': 'val1', 'test2': 'val2', 'test3': 'val3'}
-    >>> new_dict = {'test1': 'val2', 'test3': 'val3', 'test4': 'val3', 'test5': 'val5'}
+    >>> new_dict = {'test1': 'val2', 'test3': 'val3', 'test4': 'val3'}
     >>> dc = DictCompare(base_dict, new_dict)
     >>> dc.added()
-    ... ['test5', 'test4']
+    ... ['test4']
     >>> dc.removed()
     ... ['test2']
     >>> dc.changed()
     ... ['test1']
     >>> dc.get_changes()
     ... {'added':
-    ...     {'test4': 'val3','test5': 'val5'},
+    ...     {'test4': 'val3'},
     ...  'removed':
     ...     {'test2': 'val2'},
     ...  'changed':
@@ -323,7 +323,8 @@ class DictCompare(object):
     """
     def __init__(self, base_dict, new_dict):
         self.new_dict, self.base_dict = new_dict, base_dict
-        self.base_items, self.new_items = set(self.base_dict.keys()), set(self.new_dict.keys())
+        self.base_items, self.new_items = set(
+            self.base_dict.keys()), set(self.new_dict.keys())
         self.intersect = self.new_items.intersection(self.base_items)
 
     def added(self):
@@ -333,22 +334,26 @@ class DictCompare(object):
         return self.base_items - self.intersect
 
     def changed(self):
-        return set(x for x in self.intersect if self.base_dict[x] != self.new_dict[x])
+        return set(
+            x for x in self.intersect if self.base_dict[x] != self.new_dict[x])
 
     def get_changes(self):
-        """Returns dict of differences between 2 dicts and bool indicating if there are differences
+        """Returns dict of differences between 2 dicts and bool indicating if
+        there are differences
 
         :param base_dict: ``dict``
         :param new_dict: ``dict``
         :returns: ``dict``, ``bool``
         """
-        changed=False
-        mods={'added': {}, 'removed': {}, 'changed': {}}
+        changed = False
+        mods = {'added': {}, 'removed': {}, 'changed': {}}
 
         for s in self.changed():
-            changed=True
+            changed = True
             if type(self.base_dict[s]) is not dict:
-                mods['changed'] = {s: {'current_val': self.base_dict[s], 'new_val': self.new_dict[s]}}
+                mods['changed'] = {
+                    s: {'current_val': self.base_dict[s],
+                        'new_val': self.new_dict[s]}}
                 continue
 
             diff = DictCompare(self.base_dict[s], self.new_dict[s])
@@ -366,18 +371,21 @@ class DictCompare(object):
 
             for c in diff.changed():
                 if s not in mods['changed']:
-                    mods['changed'][s] = {c: {'current_val': self.base_dict[s][c], 'new_val': self.new_dict[s][c]}}
+                    mods['changed'][s] = {
+                        c: {'current_val': self.base_dict[s][c],
+                            'new_val': self.new_dict[s][c]}}
                 else:
-                    mods['changed'][s][c] = {'current_val': self.base_dict[s][c], 'new_val': self.new_dict[s][c]}
+                    mods['changed'][s][c] = {
+                        'current_val': self.base_dict[s][c],
+                        'new_val': self.new_dict[s][c]}
 
         for s in self.added():
-            changed=True
+            changed = True
             mods['added'][s] = self.new_dict[s]
 
         for s in self.removed():
-            changed=True
+            changed = True
             mods['removed'][s] = self.base_dict[s]
-
 
         return mods, changed
 
@@ -391,7 +399,8 @@ class ActionModule(ActionBase):
                                     list_extend=True,
                                     ignore_none_type=True,
                                     default_section='DEFAULT'):
-        """Returns string value from a modified config file and dict of merged config
+        """Returns string value from a modified config file and dict of
+        merged config
 
         :param config_overrides: ``dict``
         :param resultant: ``str`` || ``unicode``
@@ -739,7 +748,7 @@ class ActionModule(ActionBase):
             default_section=_vars.get('default_section', 'DEFAULT')
         )
 
-        changed=False
+        changed = False
         if self._play_context.diff:
             slurpee = self._execute_module(
                 module_name='slurp',
@@ -749,14 +758,16 @@ class ActionModule(ActionBase):
 
             config_dict_new = {}
             if 'content' in slurpee:
-                dest_data = base64.b64decode(slurpee['content']).decode('utf-8')
+                dest_data = base64.b64decode(
+                    slurpee['content']).decode('utf-8')
                 resultant_dest = self._templar.template(
                     dest_data,
                     preserve_trailing_newlines=True,
                     escape_backslashes=False,
                     convert_data=False
                 )
-                type_merger = getattr(self, CONFIG_TYPES.get(_vars['config_type']))
+                type_merger = getattr(self,
+                                      CONFIG_TYPES.get(_vars['config_type']))
                 resultant_new, config_dict_new = type_merger(
                     config_overrides={},
                     resultant=resultant_dest,
@@ -765,10 +776,10 @@ class ActionModule(ActionBase):
                     default_section=_vars.get('default_section', 'DEFAULT')
                 )
 
-            # Compare source+overrides with dest to look for changes and build diff
+            # Compare source+overrides with dest to look for changes and
+            # build diff
             cmp_dicts = DictCompare(config_dict_new, config_dict_base)
             mods, changed = cmp_dicts.get_changes()
-
 
         # Re-template the resultant object as it may have new data within it
         #  as provided by an override variable.
@@ -824,7 +835,8 @@ class ActionModule(ActionBase):
         rc['changed'] = changed
         if self._play_context.diff:
             rc['diff'] = []
-            rc['diff'].append({'prepared': json.dumps(mods, indent=4, sort_keys=True)})
+            rc['diff'].append(
+                {'prepared': json.dumps(mods, indent=4, sort_keys=True)})
         if self._task.args.get('content'):
             os.remove(_vars['source'])
         return rc
