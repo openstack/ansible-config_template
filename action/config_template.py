@@ -831,8 +831,10 @@ class ActionModule(ActionBase):
             module_args=new_module_args,
             task_vars=task_vars
         )
+        copy_changed = rc.get('changed')
+        if not copy_changed:
+            rc['changed'] = changed
 
-        rc['changed'] = changed
         if self._play_context.diff:
             rc['diff'] = []
             rc['diff'].append(
