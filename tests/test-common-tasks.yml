@@ -128,6 +128,42 @@
     that:
       - "((hostvars_file.content | b64decode | from_yaml).test_hostvar) == (test_config_yml_hostvars_overrides.test_hostvar)"
 
+# Test multistropt ordering
+- name: Template MultiStrOpts using overrides
+  config_template:
+    src: test_multistropts.ini
+    dest: /tmp/test_multistropts.ini
+    config_overrides:
+      testsection:
+        test: output
+    config_type: ini
+- name: Create expected MultiStrOpts file
+  copy:
+    src: files/test_multistropts.ini.expected
+    dest: /tmp/test_multistropts.ini.expected
+
+- name: Read test_multistropts.ini
+  slurp:
+    src: /tmp/test_multistropts.ini
+  register: multistropts_file
+- name: Read test_multistropts.ini.expected
+  slurp:
+    src: /tmp/test_multistropts.ini.expected
+  register: multistropts_expected_file
+- name: Set content facts
+  set_fact:
+    _multistropts_file: "{{ (multistropts_file.content | b64decode).strip() }}"
+    _multistropts_expected_file: "{{ (multistropts_expected_file.content | b64decode).strip() }}"
+- name: Show rendered file
+  debug:
+    msg: "multistropts rendered - {{ _multistropts_file }}"
+- name: Show expected file
+  debug:
+    msg: "multistropts expected - {{ _multistropts_expected_file }}"
+- name: Compare files
+  assert:
+    that:
+      - _multistropts_file == _multistropts_expected_file
 
 # Test content attribute with a dictionary input and config_type equal to 'json'
 - name: Template test JSON template with content attribute
