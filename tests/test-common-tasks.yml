@@ -14,6 +14,7 @@
 # limitations under the License.
 #
 # Test basic function of config_template
+
 - name: Template test INI template
   config_template:
     src: "{{ playbook_dir }}/templates/test.ini"
@@ -127,6 +128,28 @@
   assert:
     that:
       - "((hostvars_file.content | b64decode | from_yaml).test_hostvar) == (test_config_yml_hostvars_overrides.test_hostvar)"
+
+# Values containing newlines should not be chopped into a list
+# when yml_multilines is set to True
+- name: Test multiline strings in yaml
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_multiline_strs.yml"
+    dest: "/tmp/multiline_strs.yml"
+    config_overrides: "{{ test_multiline_strs_yml_overrides }}"
+    config_type: yaml
+    yml_multilines: True
+- name: Read multiline_strs.yml
+  slurp:
+    src: /tmp/multiline_strs.yml
+  register: multiline_strs_file
+- debug:
+    msg: "Multiline Yaml Strings - {{ multiline_strs_file.content | b64decode }}"
+- debug:
+    msg: "Multiline Yaml Strings Expected - {{ multiline_strs_file_expected.content | b64decode }}"
+- name: Compare files
+  assert:
+    that:
+      - "(multiline_strs_file_expected.content | b64decode) == (multiline_strs_file.content | b64decode)"
 
 # Test multistropt ordering
 - name: Template MultiStrOpts using overrides

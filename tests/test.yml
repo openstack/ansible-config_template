@@ -58,6 +58,11 @@
         src: "{{ playbook_dir }}/files/test_content_no_overrides.json.expected"
       register: content_no_overrides_file_expected
 
+    - name: Read expected test_multiline_strs.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_multiline_strs.yml.expected"
+      register: multiline_strs_file_expected
+
     - import_tasks: test-common-tasks.yml
 
     - import_tasks: test-common-tasks.yml
@@ -161,6 +166,10 @@
         - 4
     test_config_yml_hostvars_overrides:
       test_hostvar: "{{ ansible_default_ipv4.address }}"
+    test_multiline_strs_yml_overrides:
+      new_multiline_str: |
+        This should not
+        be a list
     test_default_section_overrides:
       global:
         test2: 2

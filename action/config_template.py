@@ -46,7 +46,6 @@ from ansible import __version__ as __ansible_version__
 
 __metaclass__ = type
 
-
 CONFIG_TYPES = {
     'ini': 'return_config_overrides_ini',
     'json': 'return_config_overrides_json',
@@ -144,6 +143,7 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
         self._comments = {}
         self.ignore_none_type = bool(kwargs.pop('ignore_none_type', True))
         self.default_section = str(kwargs.pop('default_section', 'DEFAULT'))
+        self.yml_multilines = bool(kwargs.pop('yml_multilines', False))
         ConfigParser.RawConfigParser.__init__(self, *args, **kwargs)
 
     def _write(self, fp, section, key, item, entry):
@@ -398,7 +398,8 @@ class ActionModule(ActionBase):
                                     resultant,
                                     list_extend=True,
                                     ignore_none_type=True,
-                                    default_section='DEFAULT'):
+                                    default_section='DEFAULT',
+                                    yml_multilines=False):
         """Returns string value from a modified config file and dict of
         merged config
 
@@ -414,7 +415,8 @@ class ActionModule(ActionBase):
                 allow_no_value=True,
                 dict_type=MultiKeyDict,
                 ignore_none_type=ignore_none_type,
-                default_section=default_section
+                default_section=default_section,
+                yml_multilines=yml_multilines
             )
             config.optionxform = str
         except Exception:
@@ -498,7 +500,8 @@ class ActionModule(ActionBase):
                                      resultant,
                                      list_extend=True,
                                      ignore_none_type=True,
-                                     default_section='DEFAULT'):
+                                     default_section='DEFAULT',
+                                     yml_multilines=False):
         """Returns config json and dict of merged config
 
         Its important to note that file ordering will not be preserved as the
@@ -525,7 +528,8 @@ class ActionModule(ActionBase):
                                      resultant,
                                      list_extend=True,
                                      ignore_none_type=True,
-                                     default_section='DEFAULT'):
+                                     default_section='DEFAULT',
+                                     yml_multilines=False):
         """Return config yaml and dict of merged config
 
         :param config_overrides: ``dict``
@@ -536,7 +540,8 @@ class ActionModule(ActionBase):
         merged_resultant = self._merge_dict(
             base_items=original_resultant,
             new_items=config_overrides,
-            list_extend=list_extend
+            list_extend=list_extend,
+            yml_multilines=yml_multilines
         )
         return yaml.dump(
             merged_resultant,
@@ -545,7 +550,11 @@ class ActionModule(ActionBase):
             width=1000,
         ), merged_resultant
 
-    def _merge_dict(self, base_items, new_items, list_extend=True):
+    def _merge_dict(self,
+                    base_items,
+                    new_items,
+                    list_extend=True,
+                    yml_multilines=False):
         """Recursively merge new_items into base_items.
 
         :param base_items: ``dict``
@@ -560,7 +569,8 @@ class ActionModule(ActionBase):
                     list_extend=list_extend
                 )
             elif (not isinstance(value, int) and
-                  (',' in value or '\n' in value)):
+                  (',' in value or
+                    ('\n' in value and not yml_multilines))):
                 base_items[key] = re.split(',|\n', value)
                 base_items[key] = [i.strip() for i in base_items[key] if i]
             elif isinstance(value, list):
@@ -662,6 +672,8 @@ class ActionModule(ActionBase):
 
         default_section = self._task.args.get('default_section', 'DEFAULT')
 
+        yml_multilines = self._task.args.get('yml_multilines', False)
+
         return True, dict(
             source=source,
             dest=user_dest,
@@ -670,7 +682,8 @@ class ActionModule(ActionBase):
             searchpath=searchpath,
             list_extend=list_extend,
             ignore_none_type=ignore_none_type,
-            default_section=default_section
+            default_section=default_section,
+            yml_multilines=yml_multilines
         )
 
     def run(self, tmp=None, task_vars=None):
@@ -745,7 +758,8 @@ class ActionModule(ActionBase):
             resultant=resultant,
             list_extend=_vars.get('list_extend', True),
             ignore_none_type=_vars.get('ignore_none_type', True),
-            default_section=_vars.get('default_section', 'DEFAULT')
+            default_section=_vars.get('default_section', 'DEFAULT'),
+            yml_multilines=_vars.get('yml_multilines', False)
         )
 
         changed = False
@@ -773,7 +787,8 @@ class ActionModule(ActionBase):
                     resultant=resultant_dest,
                     list_extend=_vars.get('list_extend', True),
                     ignore_none_type=_vars.get('ignore_none_type', True),
-                    default_section=_vars.get('default_section', 'DEFAULT')
+                    default_section=_vars.get('default_section', 'DEFAULT'),
+                    yml_multilines=_vars.get('yml_multilines', False)
                 )
 
             # Compare source+overrides with dest to look for changes and
@@ -822,6 +837,7 @@ class ActionModule(ActionBase):
         new_module_args.pop('list_extend', None)
         new_module_args.pop('ignore_none_type', None)
         new_module_args.pop('default_section', None)
+        new_module_args.pop('yml_multilines', None)
         # Content from config_template is converted to src
         new_module_args.pop('content', None)
 
