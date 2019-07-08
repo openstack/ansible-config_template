@@ -188,6 +188,44 @@
     that:
       - _multistropts_file == _multistropts_expected_file
 
+# Test remote_src
+- name: Template remote source using overrides
+  config_template:
+    src: /tmp/test_multistropts.ini
+    dest: /tmp/test_remote_src_multistropts.ini
+    remote_src: true
+    config_overrides:
+      remote_src_section:
+        test: output
+    config_type: ini
+- name: Create expected MultiStrOpts file
+  copy:
+    src: files/test_remote_src_multistropts.ini.expected
+    dest: /tmp/test_remote_src_multistropts.ini.expected
+
+- name: Read test_remote_src_multistropts.ini
+  slurp:
+    src: /tmp/test_remote_src_multistropts.ini
+  register: multistropts_file
+- name: Read test_remote_src_multistropts.ini.expected
+  slurp:
+    src: /tmp/test_remote_src_multistropts.ini.expected
+  register: multistropts_expected_file
+- name: Set content facts
+  set_fact:
+    _remote_src_file: "{{ (multistropts_file.content | b64decode).strip() }}"
+    _remote_src_expected_file: "{{ (multistropts_expected_file.content | b64decode).strip() }}"
+- name: Show rendered file
+  debug:
+    msg: "multistropts rendered - {{ _remote_src_file }}"
+- name: Show expected file
+  debug:
+    msg: "multistropts expected - {{ _remote_src_expected_file }}"
+- name: Compare files
+  assert:
+    that:
+      - _remote_src_file == _remote_src_expected_file
+
 # Test content attribute with a dictionary input and config_type equal to 'json'
 - name: Template test JSON template with content attribute
   config_template:

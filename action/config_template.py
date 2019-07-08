@@ -38,6 +38,7 @@ import tempfile as tmpfilelib
 
 from ansible.plugins.action import ActionBase
 from ansible.module_utils._text import to_bytes, to_text
+from ansible.module_utils.parsing.convert_bool import boolean
 from ansible import constants as C
 from ansible import errors
 from ansible.parsing.yaml.dumper import AnsibleDumper
@@ -611,17 +612,30 @@ class ActionModule(ActionBase):
             file_path = self._loader.get_basedir()
 
         user_source = self._task.args.get('src')
-        # (alextricity25) It's possible that the user could pass in a datatype
-        # and not always a string. In this case we don't want the datatype
-        # python representation to be printed out to the file, but rather we
-        # want the serialized version.
-        _user_content = self._task.args.get('content')
+        remote_src = boolean(
+            self._task.args.get('remote_src', False),
+            strict=False
+        )
+        if remote_src:
+            slurpee = self._execute_module(
+                module_name='slurp',
+                module_args=dict(src=user_source),
+                task_vars=task_vars
+            )
+            _content = base64.b64decode(slurpee['content'])
+            _user_content = _content.decode('utf-8')
+        else:
+            # (alextricity25) It's possible that the user could pass in a
+            # datatype and not always a string. In this case we don't want
+            # the datatype python representation to be printed out to the
+            # file, but rather we want the serialized version.
+            _user_content = self._task.args.get('content')
 
-        # If the data type of the content input is a dictionary, it's
-        # converted dumped as json if config_type is 'json'.
-        if isinstance(_user_content, dict):
-            if self._task.args.get('config_type') == 'json':
-                _user_content = json.dumps(_user_content)
+            # If the data type of the content input is a dictionary, it's
+            # converted dumped as json if config_type is 'json'.
+            if isinstance(_user_content, dict):
+                if self._task.args.get('config_type') == 'json':
+                    _user_content = json.dumps(_user_content)
 
         user_content = str(_user_content)
         if not user_source:
@@ -671,6 +685,7 @@ class ActionModule(ActionBase):
         ignore_none_type = self._task.args.get('ignore_none_type', True)
 
         default_section = self._task.args.get('default_section', 'DEFAULT')
+        remote_src = self._task.args.get('remote_src', False)
 
         yml_multilines = self._task.args.get('yml_multilines', False)
 
@@ -683,7 +698,8 @@ class ActionModule(ActionBase):
             list_extend=list_extend,
             ignore_none_type=ignore_none_type,
             default_section=default_section,
-            yml_multilines=yml_multilines
+            yml_multilines=yml_multilines,
+            remote_src=remote_src
         )
 
     def run(self, tmp=None, task_vars=None):
@@ -838,6 +854,10 @@ class ActionModule(ActionBase):
         new_module_args.pop('ignore_none_type', None)
         new_module_args.pop('default_section', None)
         new_module_args.pop('yml_multilines', None)
+
+        # While this is in the copy module we dont want to use it.
+        new_module_args.pop('remote_src', None)
+
         # Content from config_template is converted to src
         new_module_args.pop('content', None)
 

@@ -64,6 +64,17 @@ options:
         section that will appear at the top of the configuration file. For
         example 'global'.
     default: 'DEFAULT'
+  remote_src:
+    description:
+      - Influence whether the template needs to be transferred or already is
+        present remotely.
+      - If false, it will search the originating machine.
+      - If true, it will go to the remote/target machine to inject the
+        template. If the remote source does not exist the module will fail.
+    choices:
+      - True
+      - False
+    default: false
 
 author: Kevin Carter
 """

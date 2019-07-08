@@ -1,0 +1,10 @@
+[multistropts]
+test = test1
+test = test2
+test = test3
+
+[remote_src_section]
+test = output
+
+[testsection]
+test = output
