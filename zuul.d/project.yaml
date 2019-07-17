@@ -24,3 +24,6 @@
     gate:
       jobs:
         - openstack-ansible-python3-ubuntu-bionic
+    post:
+      jobs:
+        - publish-openstack-python-branch-tarball
