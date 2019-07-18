@@ -21,9 +21,11 @@
     check:
       jobs:
         - openstack-ansible-python3-ubuntu-bionic
+        - tripleo-ci-centos-7-standalone-os-tempest
     gate:
       jobs:
         - openstack-ansible-python3-ubuntu-bionic
+        - tripleo-ci-centos-7-standalone-os-tempest
     post:
       jobs:
         - publish-openstack-python-branch-tarball
