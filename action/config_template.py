@@ -22,19 +22,22 @@ try:
 except ImportError:
     import configparser as ConfigParser
 import datetime
+
 try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
+
 import base64
 import json
 import os
 import pwd
 import re
-import six
 import time
 import yaml
 import tempfile as tmpfilelib
+
+from collections import OrderedDict
 
 from ansible.plugins.action import ActionBase
 from ansible.module_utils._text import to_bytes, to_text
@@ -53,13 +56,15 @@ CONFIG_TYPES = {
     'yaml': 'return_config_overrides_yaml'
 }
 
+STRIP_MARKER = '__MARKER__'
+
 
 class IDumper(AnsibleDumper):
     def increase_indent(self, flow=False, indentless=False):
         return super(IDumper, self).increase_indent(flow, False)
 
 
-class MultiKeyDict(dict):
+class MultiKeyDict(OrderedDict):
     """Dictionary class which supports duplicate keys.
     This class allows for an item to be added into a standard python dictionary
     however if a key is created more than once the dictionary will convert the
@@ -77,6 +82,32 @@ class MultiKeyDict(dict):
     ... {'a': tuple(['1', '2']), 'c': {'a': 1}, 'b': ['a', 'b', 'c']}
     """
 
+    def index(self, key):
+        index_search = [
+            i for i, item in enumerate(self) if item.startswith(key)
+        ]
+        if len(index_search) > 1:
+            raise SystemError('Index search returned more than one value')
+        return index_search[0]
+
+    def insert(self, index, key, value):
+        list(self)[index]  # Validates the index
+        shadow = MultiKeyDict()
+        counter = 0
+        for k, v in self.items():
+            if counter == index:
+                shadow[k] = v
+                shadow[key] = value
+            else:
+                shadow[k] = v
+            counter += 1
+        else:
+            return shadow
+
+    def update(self, E=None, **kwargs):
+        for key, value in E.items():
+            super(MultiKeyDict, self).__setitem__(key, value)
+
     def __setitem__(self, key, value):
         if key in self:
             if isinstance(self[key], tuple):
@@ -89,7 +120,7 @@ class MultiKeyDict(dict):
                     items = tuple([str(self[key]), str(value)])
                     super(MultiKeyDict, self).__setitem__(key, items)
         else:
-            return dict.__setitem__(self, key, value)
+            return super(MultiKeyDict, self).__setitem__(key, value)
 
 
 class ConfigTemplateParser(ConfigParser.RawConfigParser):
@@ -141,11 +172,41 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
     """
 
     def __init__(self, *args, **kwargs):
-        self._comments = {}
         self.ignore_none_type = bool(kwargs.pop('ignore_none_type', True))
         self.default_section = str(kwargs.pop('default_section', 'DEFAULT'))
         self.yml_multilines = bool(kwargs.pop('yml_multilines', False))
+        self._comment_prefixes = kwargs.pop('comment_prefixes', '/')
+        self._empty_lines_in_values = kwargs.get('allow_no_value', True)
+        self._strict = kwargs.get('strict', False)
+        self._allow_no_value = self._empty_lines_in_values
         ConfigParser.RawConfigParser.__init__(self, *args, **kwargs)
+
+    def set(self, section, option, value=None):
+        if not section or section == 'DEFAULT':
+            sectdict = self._defaults
+            use_defaults = True
+        else:
+            try:
+                sectdict = self._sections[section]
+            except KeyError:
+                raise SystemError('Section %s not found' % section)
+            else:
+                use_defaults = False
+
+        option = self.optionxform(option)
+        try:
+            index = sectdict.index('#%s' % option)
+        except (ValueError, IndexError):
+            sectdict[option] = value
+        else:
+            if use_defaults:
+                self._defaults = sectdict.insert(index, option, value)
+            else:
+                self._sections[section] = sectdict.insert(
+                    index,
+                    option,
+                    value
+                )
 
     def _write(self, fp, section, key, item, entry):
         if section:
@@ -153,150 +214,102 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
             # the option name only if the value type is None.
             if not self.ignore_none_type and item is None:
                 fp.write(key + '\n')
-            elif (item is not None) or (self._optcre == self.OPTCRE):
-                fp.write(entry)
-        else:
-            fp.write(entry)
+                return
+
+        fp.write(entry)
 
     def _write_check(self, fp, key, value, section=False):
-        if isinstance(value, (tuple, set)):
-            for item in value:
-                item = str(item).replace('\n', '\n\t')
-                entry = "%s = %s\n" % (key, item)
-                self._write(fp, section, key, item, entry)
-        else:
-            if isinstance(value, list):
-                _value = [str(i.replace('\n', '\n\t')) for i in value]
-                entry = '%s = %s\n' % (key, ','.join(_value))
+        def _return_entry(option, item):
+            if item:
+                return "%s = %s\n" % (option, str(item).replace('\n', '\n\t'))
             else:
-                entry = '%s = %s\n' % (key, str(value).replace('\n', '\n\t'))
+                return "%s\n" % option
+
+        key = key.split(STRIP_MARKER)[0]
+        if isinstance(value, (tuple, set)):
+            for i in sorted(value):
+                entry = _return_entry(option=key, item=i)
+                self._write(fp, section, key, i, entry)
+        elif isinstance(value, list):
+            _value = [str(i.replace('\n', '\n\t')) for i in value]
+            entry = '%s = %s\n' % (key, ','.join(_value))
+            self._write(fp, section, key, value, entry)
+        else:
+            entry = _return_entry(option=key, item=value)
             self._write(fp, section, key, value, entry)
 
-    def write(self, fp):
+    def write(self, fp, **kwargs):
         def _do_write(section_name, section, section_bool=False):
-            _write_comments(section_name)
             fp.write("[%s]\n" % section_name)
-            for key, value in sorted(section.items()):
-                _write_comments(section_name, optname=key)
-                self._write_check(fp, key=key, value=value,
-                                  section=section_bool)
+            for key, value in section.items():
+                self._write_check(
+                    fp,
+                    key=key,
+                    value=value,
+                    section=section_bool
+                )
             else:
                 fp.write("\n")
 
-        def _write_comments(section, optname=None):
-            comsect = self._comments.get(section, {})
-            if optname in comsect:
-                fp.write(''.join(comsect[optname]))
-
-        if self.default_section != 'DEFAULT' and self._sections.get(
-                self.default_section, False):
-            _do_write(self.default_section,
-                      self._sections[self.default_section],
-                      section_bool=True)
-            self._sections.pop(self.default_section)
-
-        if self._defaults:
+        if self.default_section != 'DEFAULT':
+            if not self._sections.get(self.default_section, False):
+                _do_write(
+                    section_name=self.default_section,
+                    section=self._sections[self.default_section],
+                    section_bool=True
+                )
+        elif self._defaults:
             _do_write('DEFAULT', self._defaults)
 
-        for section in sorted(self._sections):
-            _do_write(section, self._sections[section], section_bool=True)
+        for i in self._sections:
+            _do_write(i, self._sections[i], section_bool=True)
 
     def _read(self, fp, fpname):
-        comments = []
-        cursect = None
+        def _temp_set():
+            _temp_item = [cursect[optname]]
+            cursect.update({optname: _temp_item})
+
         optname = None
-        lineno = 0
-        e = None
-        while True:
-            line = fp.readline()
-            if not line:
-                break
-            lineno += 1
-            if line.strip() == '':
-                if comments:
-                    comments.append('')
-                continue
-
-            if line.lstrip()[0] in '#;':
-                comments.append(line.lstrip())
-                continue
-
-            if line.split(None, 1)[0].lower() == 'rem' and line[0] in "rR":
-                continue
-            if line[0].isspace() and cursect is not None and optname:
-                value = line.strip()
-                if value:
-                    try:
-                        if isinstance(cursect[optname], (tuple, set)):
-                            _temp_item = list(cursect[optname])
-                            del cursect[optname]
-                            cursect[optname] = _temp_item
-                        elif isinstance(cursect[optname], six.text_type):
-                            _temp_item = [cursect[optname]]
-                            del cursect[optname]
-                            cursect[optname] = _temp_item
-                    except NameError:
-                        if isinstance(cursect[optname], (bytes, str)):
-                            _temp_item = [cursect[optname]]
-                            del cursect[optname]
-                            cursect[optname] = _temp_item
-                    cursect[optname].append(value)
-            else:
-                mo = self.SECTCRE.match(line)
-                if mo:
-                    sectname = mo.group('header')
-                    if sectname in self._sections:
-                        cursect = self._sections[sectname]
-                    elif sectname == 'DEFAULT':
-                        cursect = self._defaults
-                    else:
-                        cursect = self._dict()
-                        self._sections[sectname] = cursect
-                    optname = None
-
-                    comsect = self._comments.setdefault(sectname, {})
-                    if comments:
-                        # NOTE(flaper87): Using none as the key for
-                        # section level comments
-                        comsect[None] = comments
-                        comments = []
-                elif cursect is None:
-                    raise ConfigParser.MissingSectionHeaderError(
-                        fpname,
-                        lineno,
-                        line
-                    )
+        cursect = {}
+        marker_counter = 0
+        for lineno, line in enumerate(fp, start=0):
+            marker_counter += 1
+            mo_match = self.SECTCRE.match(line)
+            mo_optcre = self._optcre.match(line)
+            if mo_match:
+                sectname = mo_match.group('header')
+                if sectname in self._sections:
+                    cursect = self._sections[sectname]
+                elif sectname == 'DEFAULT':
+                    cursect = self._defaults
                 else:
-                    mo = self._optcre.match(line)
-                    if mo:
-                        optname, vi, optval = mo.group('option', 'vi', 'value')
-                        optname = self.optionxform(optname.rstrip())
-                        if optval is not None:
-                            if vi in ('=', ':') and ';' in optval:
-                                pos = optval.find(';')
-                                if pos != -1 and optval[pos - 1].isspace():
-                                    optval = optval[:pos]
-                            optval = optval.strip()
-                            if optval == '""':
-                                optval = ''
-                        cursect[optname] = optval
-                        if comments:
-                            comsect[optname] = comments
-                            comments = []
-                    else:
-                        if not e:
-                            e = ConfigParser.ParsingError(fpname)
-                        e.append(lineno, repr(line))
-        if e:
-            raise e
-        all_sections = [self._defaults]
-        all_sections.extend(self._sections.values())
-        for options in all_sections:
-            for name, val in options.items():
-                if isinstance(val, list):
-                    _temp_item = '\n'.join(val)
-                    del options[name]
-                    options[name] = _temp_item
+                    cursect = self._dict()
+                    self._sections[sectname] = cursect
+            elif mo_optcre:
+                optname, vi, optval = mo_optcre.group('option', 'vi', 'value')
+                optname = self.optionxform(optname.rstrip())
+                if optname and not optname.startswith('#') and optval:
+                    if vi in ('=', ':') and ';' in optval:
+                        pos = optval.find(';')
+                        if pos != -1 and optval[pos - 1].isspace():
+                            optval = optval[:pos]
+                    optval = optval.strip()
+                    if optval == '""':
+                        optval = ''
+                else:
+                    optname = '%s%s-%d' % (
+                        optname,
+                        STRIP_MARKER,
+                        marker_counter
+                    )
+                cursect[optname] = optval
+            else:
+
+                optname = '%s-%d' % (
+                    STRIP_MARKER,
+                    marker_counter
+                )
+                cursect[optname] = None
 
 
 class DictCompare(object):
@@ -322,6 +335,7 @@ class DictCompare(object):
     ...     {'test1': {'current_val': 'vol1', 'new_val': 'val2'}
     ... }
     """
+
     def __init__(self, base_dict, new_dict):
         self.new_dict, self.base_dict = new_dict, base_dict
         self.base_items, self.new_items = set(
@@ -408,6 +422,15 @@ class ActionModule(ActionBase):
         :param resultant: ``str`` || ``unicode``
         :returns: ``str``, ``dict``
         """
+        def _add_section(section_name):
+            # Attempt to add a section to the config file passing if
+            #  an error is raised that is related to the section
+            #  already existing.
+            try:
+                config.add_section(section_name)
+            except (ConfigParser.DuplicateSectionError, ValueError):
+                pass
+
         # If there is an exception loading the RawConfigParser The config obj
         #  is loaded again without the extra option. This is being done to
         #  support older python.
@@ -417,14 +440,25 @@ class ActionModule(ActionBase):
                 dict_type=MultiKeyDict,
                 ignore_none_type=ignore_none_type,
                 default_section=default_section,
-                yml_multilines=yml_multilines
+                yml_multilines=yml_multilines,
+                comment_prefixes='/'
             )
             config.optionxform = str
         except Exception:
-            config = ConfigTemplateParser(dict_type=MultiKeyDict)
+            config = ConfigTemplateParser(
+                allow_no_value=True,
+                dict_type=MultiKeyDict,
+                comment_prefixes='/'
+            )
 
         config_object = StringIO(resultant)
-        config.readfp(config_object)
+        try:
+            config.read_file(config_object)
+        except AttributeError:
+            config.readfp(config_object)
+
+        if default_section != 'DEFAULT':
+            _add_section(section_name=default_section)
 
         for section, items in config_overrides.items():
             # If the items value is not a dictionary it is assumed that the
@@ -432,20 +466,15 @@ class ActionModule(ActionBase):
             if not isinstance(items, dict):
                 if isinstance(items, list):
                     items = ','.join(to_text(i) for i in items)
+
                 self._option_write(
                     config,
-                    'DEFAULT',
+                    default_section,
                     section,
                     items
                 )
             else:
-                # Attempt to add a section to the config file passing if
-                #  an error is raised that is related to the section
-                #  already existing.
-                try:
-                    config.add_section(section)
-                except (ConfigParser.DuplicateSectionError, ValueError):
-                    pass
+                _add_section(section_name=section)
                 for key, value in items.items():
                     try:
                         self._option_write(config, section, key, value)
@@ -459,10 +488,10 @@ class ActionModule(ActionBase):
         else:
             config_object.close()
 
-        config_dict_new = {}
+        config_dict_new = OrderedDict()
         config_defaults = config.defaults()
         for s in config.sections():
-            config_dict_new[s] = {}
+            config_dict_new[s] = OrderedDict()
             for k, v in config.items(s):
                 if k not in config_defaults or config_defaults[k] != v:
                     config_dict_new[s][k] = v
@@ -571,7 +600,7 @@ class ActionModule(ActionBase):
                 )
             elif (not isinstance(value, int) and
                   (',' in value or
-                    ('\n' in value and not yml_multilines))):
+                   ('\n' in value and not yml_multilines))):
                 base_items[key] = re.split(',|\n', value)
                 base_items[key] = [i.strip() for i in base_items[key] if i]
             elif isinstance(value, list):
@@ -702,6 +731,21 @@ class ActionModule(ActionBase):
             remote_src=remote_src
         )
 
+    def resultant_ini_as_dict(self, resultant_dict, return_dict=None):
+        if not return_dict:
+            return_dict = {}
+
+        for key, value in resultant_dict.items():
+            if not value:
+                continue
+            key = key.split(STRIP_MARKER)[0]
+            if isinstance(value, (OrderedDict, MultiKeyDict, dict)):
+                return_dict[key] = self.resultant_ini_as_dict(value)
+            else:
+                return_dict[key] = value
+
+        return return_dict
+
     def run(self, tmp=None, task_vars=None):
         """Run the method"""
 
@@ -767,7 +811,6 @@ class ActionModule(ActionBase):
             self._templar._available_variables
         )
 
-        config_dict_base = {}
         type_merger = getattr(self, CONFIG_TYPES.get(_vars['config_type']))
         resultant, config_dict_base = type_merger(
             config_overrides=_vars['config_overrides'],
@@ -785,8 +828,7 @@ class ActionModule(ActionBase):
                 module_args=dict(src=_vars['dest']),
                 task_vars=task_vars
             )
-
-            config_dict_new = {}
+            config_dict_new = dict()
             if 'content' in slurpee:
                 dest_data = base64.b64decode(
                     slurpee['content']).decode('utf-8')
@@ -809,7 +851,10 @@ class ActionModule(ActionBase):
 
             # Compare source+overrides with dest to look for changes and
             # build diff
-            cmp_dicts = DictCompare(config_dict_new, config_dict_base)
+            cmp_dicts = DictCompare(
+                self.resultant_ini_as_dict(resultant_dict=config_dict_new),
+                self.resultant_ini_as_dict(resultant_dict=config_dict_base)
+            )
             mods, changed = cmp_dicts.get_changes()
 
         # Re-template the resultant object as it may have new data within it

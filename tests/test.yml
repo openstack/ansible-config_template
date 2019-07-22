@@ -69,16 +69,6 @@
       delegate_to: container1
 
   handlers:
-    - name: test_ini check diff
-      assert:
-        that:
-          - test_ini.diff[0].prepared|from_json == diff_ini
-
-    - name: test_with_content_ini check diff
-      assert:
-        that:
-          - test_with_content_ini.diff[0].prepared|from_json == diff_ini
-
     - name: test_extend_yml check diff
       assert:
         that:
@@ -98,17 +88,6 @@
       assert:
         that:
           - test_content_no_overrides_json.diff[0].prepared|from_json == diff_content_no_overrides_json
-
-    - name: test_ignore_none_type_ini check diff
-      assert:
-        that:
-          - test_ignore_none_type_ini.diff[0].prepared|from_json == diff_ignore_none_type_ini
-
-    - name: test_with_comments_ini check diff
-      tags: test
-      assert:
-        that:
-          - test_with_comments_ini.diff[0].prepared|from_json == diff_with_comments_ini
 
     - name: test_diff_ini check diff
       tags: test
@@ -130,6 +109,8 @@
         baz: "bar"
       section1:
         key1: "String1"
+        key10: 10
+        key11: 11
         key2: "string2"
         key3: "string3"
         key4: "string4"
@@ -138,8 +119,10 @@
         key7: 1
         key8: 2
         key9: 3
-        key10: 10
-        key11: 11
+      section10:
+        key1: 1
+      section11:
+        key1: 1
       section2:
         key1: "value1"
       section3:
@@ -155,10 +138,6 @@
       section8:
         key1: 1
       section9:
-        key1: 1
-      section10:
-        key1: 1
-      section11:
         key1: 1
     test_config_yml_overrides:
       list_one:
@@ -180,53 +159,20 @@
         baz: "hotel"
       section3:
         alfa: "bravo"
-    diff_with_comments_ini:
-      added:
-        DEFAULT:
-          new_key: "new_value"
-          test_hosts: "\n+_unicode\n1\nstring"
-        bar: {}
-        foo:
-          baz: "bar"
-        section1:
-          key1: "String1"
-          key10: "10"
-          key11: "11"
-          key2: "string2"
-          key3: "string3"
-          key4: "string4"
-          key5: "string5"
-          key6: "string6"
-          key7: "1"
-          key8: "2"
-          key9: "3"
-        section10:
-          key1: "1"
-        section11:
-          key1: "1"
-        section2:
-          key1: "value1"
-        section3:
-          key1: "value1"
-        section4:
-          key1: "value1"
-        section5:
-          key1: "value1"
-        section6:
-          key1: "value1"
-        section7:
-          key1: "value1"
-        section8:
-          key1: "1"
-        section9:
-          key1: "1"
-      changed: {}
-      removed: {}
+    test_enhanced_comments_ini_overrides:
+      DEFAULT:
+        default_availability_zone: zone1
+        instance_usage_audit_period: blah blah blah
+        password_length: 100
+        test:
+          - test1
+          - test2
+      TestSection:
+        things: stuff
     diff_ini:
       added:
         DEFAULT:
           new_key: "new_value"
-        bar: {}
         foo:
           baz: "bar"
         section1:
@@ -296,54 +242,6 @@
           - "one"
           - "two"
         test_hostvar: "{{ ansible_default_ipv4.address }}"
-      changed: {}
-      removed: {}
-    diff_ignore_none_type_ini:
-      added:
-        DEFAULT:
-          new_key: "new_value"
-        alfa:
-          bravo: "charlie"
-          delta: "echo"
-        foo:
-          baz: "bar"
-        foxtrot:
-          golf: "hotel"
-          india: null
-          juliett kilo: null
-          lima: "mike"
-        section1:
-          key1: "String1"
-          key10: "10"
-          key11: "11"
-          key2: "string2"
-          key3: "string3"
-          key4: "string4"
-          key5: "string5"
-          key6: "string6"
-          key7: "1"
-          key8: "2"
-          key9: "3"
-        section10:
-          key1: "1"
-        section11:
-          key1: "1"
-        section2:
-          key1: "value1"
-        section3:
-          key1: "value1"
-        section4:
-          key1: "value1"
-        section5:
-          key1: "value1"
-        section6:
-          key1: "value1"
-        section7:
-          key1: "value1"
-        section8:
-          key1: "1"
-        section9:
-          key1: "1"
       changed: {}
       removed: {}
     diff_content_no_overrides_json:
