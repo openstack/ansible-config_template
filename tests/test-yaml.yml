@@ -123,3 +123,53 @@
   assert:
     that:
       - "(multiline_strs_file_expected.content | b64decode) == (multiline_strs_file.content | b64decode)"
+
+
+# Test yaml list only files
+- name: Test list only files in yaml (extend)
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_list_only.yml"
+    dest: "/tmp/test_list_only.yml"
+    config_overrides: "{{ test_list_only_overrides }}"
+    config_type: yaml
+    list_extend: True
+
+- name: Read test_list_only.yml
+  slurp:
+    src: /tmp/test_list_only.yml
+  register: test_list_only_file
+
+- debug:
+    msg: "List only Yaml Strings - {{ test_list_only_file.content | b64decode }}"
+
+- debug:
+    msg: "List only Yaml Strings Expected - {{ test_list_only_file_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(test_list_only_file_expected.content | b64decode) == (test_list_only_file.content | b64decode)"
+
+- name: Test list only files in yaml (replace)
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_list_only.yml"
+    dest: "/tmp/test_list_only.yml"
+    config_overrides: "{{ test_list_only_overrides }}"
+    config_type: yaml
+    list_extend: False
+
+- name: Read test_list_only.yml
+  slurp:
+    src: /tmp/test_list_only.yml
+  register: test_list_only_replace_file
+
+- debug:
+    msg: "List only Yaml Strings - {{ test_list_only_replace_file.content | b64decode }}"
+
+- debug:
+    msg: "List only Yaml Strings Expected - {{ test_list_only_replace_file_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(test_list_only_replace_file_expected.content | b64decode) == (test_list_only_replace_file.content | b64decode)"

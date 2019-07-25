@@ -588,35 +588,41 @@ class ActionModule(ActionBase):
         """Recursively merge new_items into base_items.
 
         :param base_items: ``dict``
-        :param new_items: ``dict``
+        :param new_items: ``dict`` || ``list``
         :returns: ``dict``
         """
-        for key, value in new_items.items():
-            if isinstance(value, dict):
-                base_items[key] = self._merge_dict(
-                    base_items=base_items.get(key, {}),
-                    new_items=value,
-                    list_extend=list_extend
-                )
-            elif (not isinstance(value, int) and
-                  (',' in value or
-                   ('\n' in value and not yml_multilines))):
-                base_items[key] = re.split(',|\n', value)
-                base_items[key] = [i.strip() for i in base_items[key] if i]
-            elif isinstance(value, list):
-                if isinstance(base_items.get(key), list) and list_extend:
-                    base_items[key].extend(value)
+        if isinstance(new_items, dict):
+            for key, value in new_items.items():
+                if isinstance(value, dict):
+                    base_items[key] = self._merge_dict(
+                        base_items=base_items.get(key, {}),
+                        new_items=value,
+                        list_extend=list_extend
+                    )
+                elif (not isinstance(value, int) and (
+                      ',' in value or (
+                        '\n' in value and not yml_multilines))):
+                    base_items[key] = re.split(',|\n', value)
+                    base_items[key] = [i.strip() for i in base_items[key] if i]
+                elif isinstance(value, list):
+                    if isinstance(base_items.get(key), list) and list_extend:
+                        base_items[key].extend(value)
+                    else:
+                        base_items[key] = value
+                elif isinstance(value, (tuple, set)):
+                    if isinstance(base_items.get(key), tuple) and list_extend:
+                        base_items[key] += tuple(value)
+                    elif isinstance(base_items.get(key), list) and list_extend:
+                        base_items[key].extend(list(value))
+                    else:
+                        base_items[key] = value
                 else:
-                    base_items[key] = value
-            elif isinstance(value, (tuple, set)):
-                if isinstance(base_items.get(key), tuple) and list_extend:
-                    base_items[key] += tuple(value)
-                elif isinstance(base_items.get(key), list) and list_extend:
-                    base_items[key].extend(list(value))
-                else:
-                    base_items[key] = value
+                    base_items[key] = new_items[key]
+        elif isinstance(new_items, list):
+            if list_extend:
+                base_items.extend(new_items)
             else:
-                base_items[key] = new_items[key]
+                base_items = new_items
         return base_items
 
     def _load_options_and_status(self, task_vars):
@@ -812,7 +818,7 @@ class ActionModule(ActionBase):
         )
 
         type_merger = getattr(self, CONFIG_TYPES.get(_vars['config_type']))
-        resultant, config_dict_base = type_merger(
+        resultant, config_base = type_merger(
             config_overrides=_vars['config_overrides'],
             resultant=resultant,
             list_extend=_vars.get('list_extend', True),
@@ -822,13 +828,13 @@ class ActionModule(ActionBase):
         )
 
         changed = False
+        config_new = None
         if self._play_context.diff:
             slurpee = self._execute_module(
                 module_name='slurp',
                 module_args=dict(src=_vars['dest']),
                 task_vars=task_vars
             )
-            config_dict_new = dict()
             if 'content' in slurpee:
                 dest_data = base64.b64decode(
                     slurpee['content']).decode('utf-8')
@@ -840,7 +846,7 @@ class ActionModule(ActionBase):
                 )
                 type_merger = getattr(self,
                                       CONFIG_TYPES.get(_vars['config_type']))
-                resultant_new, config_dict_new = type_merger(
+                _, config_new = type_merger(
                     config_overrides={},
                     resultant=resultant_dest,
                     list_extend=_vars.get('list_extend', True),
@@ -851,11 +857,32 @@ class ActionModule(ActionBase):
 
             # Compare source+overrides with dest to look for changes and
             # build diff
-            cmp_dicts = DictCompare(
-                self.resultant_ini_as_dict(resultant_dict=config_dict_new),
-                self.resultant_ini_as_dict(resultant_dict=config_dict_base)
-            )
-            mods, changed = cmp_dicts.get_changes()
+            if isinstance(config_base, dict):
+                if not config_new:
+                    config_new = dict()
+                cmp_dicts = DictCompare(
+                    self.resultant_ini_as_dict(resultant_dict=config_new),
+                    self.resultant_ini_as_dict(resultant_dict=config_base)
+                )
+                mods, changed = cmp_dicts.get_changes()
+            elif isinstance(config_base, list):
+                if not config_new:
+                    config_new = list()
+                mods = {
+                    'added': [
+                        i for i in config_new
+                        if i not in config_base
+                    ],
+                    'removed': [
+                        i for i in config_base
+                        if i not in config_new
+                    ],
+                    'changed': [
+                        i for i in (config_base + config_new)
+                        if i not in config_base or i not in config_new
+                    ]
+                }
+                changed = len(mods['changed']) > 0
 
         # Re-template the resultant object as it may have new data within it
         #  as provided by an override variable.
