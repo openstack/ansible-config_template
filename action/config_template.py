@@ -220,8 +220,11 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
 
     def _write_check(self, fp, key, value, section=False):
         def _return_entry(option, item):
-            if item:
+            # If we have item, we consider it as a config parameter with value
+            if item is not None:
                 return "%s = %s\n" % (option, str(item).replace('\n', '\n\t'))
+            elif not option:
+                return option
             else:
                 return "%s\n" % option
 
