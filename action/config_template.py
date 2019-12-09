@@ -58,6 +58,12 @@ CONFIG_TYPES = {
 
 STRIP_MARKER = '__MARKER__'
 
+# Py3 vs Py2 error handling. When Py2 is no longer supported, remove this.
+try:
+    PermissionError = PermissionError
+except NameError:
+    PermissionError = (IOError, OSError)
+
 
 class IDumper(AnsibleDumper):
     def increase_indent(self, flow=False, indentless=False):
@@ -778,16 +784,33 @@ class ActionModule(ActionBase):
         temp_vars = task_vars.copy()
         template_host = temp_vars['template_host'] = os.uname()[1]
         source = temp_vars['template_path'] = _vars['source']
-        temp_vars['template_mtime'] = datetime.datetime.fromtimestamp(
-            os.path.getmtime(source)
-        )
 
         try:
-            template_uid = temp_vars['template_uid'] = pwd.getpwuid(
-                os.stat(source).st_uid
-            ).pw_name
-        except Exception:
-            template_uid = temp_vars['template_uid'] = os.stat(source).st_uid
+            mtime = os.path.getmtime(source)
+            temp_vars['template_mtime'] = datetime.datetime.fromtimestamp(
+                mtime
+            )
+            try:
+                template_uid = temp_vars['template_uid'] = pwd.getpwuid(
+                    os.stat(source).st_uid
+                ).pw_name
+            except Exception:
+                template_uid = temp_vars['template_uid'] = os.stat(
+                    source
+                ).st_uid
+        except PermissionError:
+            local_task_vars = temp_vars.copy()
+            local_task_vars['connection'] = 'local'
+            stat = self._execute_module(
+                module_name='stat',
+                module_args=dict(path=source),
+                task_vars=local_task_vars
+            )
+            mtime = stat['stat']['mtime']
+            temp_vars['template_mtime'] = datetime.datetime.fromtimestamp(
+                mtime
+            )
+            template_uid = stat['stat']['uid']
 
         managed_default = C.DEFAULT_MANAGED_STR
         managed_str = managed_default.format(
@@ -798,13 +821,25 @@ class ActionModule(ActionBase):
 
         temp_vars['ansible_managed'] = time.strftime(
             managed_str,
-            time.localtime(os.path.getmtime(source))
+            time.localtime(mtime)
         )
         temp_vars['template_fullpath'] = os.path.abspath(source)
         temp_vars['template_run_date'] = datetime.datetime.now()
 
-        with open(source, 'r') as f:
-            template_data = to_text(f.read())
+        try:
+            with open(source, 'r') as f:
+                template_data = to_text(f.read())
+        except PermissionError:
+            local_temp_vars = task_vars.copy()
+            local_temp_vars['connection'] = 'local'
+            template_data_slurpee = self._execute_module(
+                module_name='slurp',
+                module_args=dict(src=_vars['dest']),
+                task_vars=local_temp_vars
+            )
+            template_data = base64.b64decode(
+                template_data_slurpee['content']
+            ).decode('utf-8')
 
         self._templar.environment.loader.searchpath = _vars['searchpath']
         self._templar.set_available_variables(temp_vars)
