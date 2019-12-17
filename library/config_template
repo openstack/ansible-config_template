@@ -75,7 +75,15 @@ options:
       - True
       - False
     default: false
-
+  render_template:
+    description:
+      - Enable or disable the template render engine. This is useful when
+        dealing with remote data that may have jinja content in the comment
+        sections but is not in need of rendering.
+    choices:
+      - True
+      - False
+    default: true
 author: Kevin Carter
 """
 

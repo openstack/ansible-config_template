@@ -769,6 +769,17 @@ class ActionModule(ActionBase):
 
         return return_dict
 
+    def _check_templar(self, data):
+        if boolean(self._task.args.get('render_template', True)):
+            return self._templar.template(
+                data,
+                preserve_trailing_newlines=True,
+                escape_backslashes=False,
+                convert_data=False
+            )
+        else:
+            return data
+
     def run(self, tmp=None, task_vars=None):
         """Run the method"""
 
@@ -855,12 +866,7 @@ class ActionModule(ActionBase):
 
         self._templar.environment.loader.searchpath = _vars['searchpath']
         self._templar.set_available_variables(temp_vars)
-        resultant = self._templar.template(
-            template_data,
-            preserve_trailing_newlines=True,
-            escape_backslashes=False,
-            convert_data=False
-        )
+        resultant = self._check_templar(data=template_data)
 
         # Access to protected method is unavoidable in Ansible
         self._templar.set_available_variables(
@@ -888,12 +894,7 @@ class ActionModule(ActionBase):
             if 'content' in slurpee:
                 dest_data = base64.b64decode(
                     slurpee['content']).decode('utf-8')
-                resultant_dest = self._templar.template(
-                    dest_data,
-                    preserve_trailing_newlines=True,
-                    escape_backslashes=False,
-                    convert_data=False
-                )
+                resultant_dest = self._check_templar(data=dest_data)
                 type_merger = getattr(self,
                                       CONFIG_TYPES.get(_vars['config_type']))
                 _, config_new = type_merger(
@@ -936,12 +937,7 @@ class ActionModule(ActionBase):
 
         # Re-template the resultant object as it may have new data within it
         #  as provided by an override variable.
-        resultant = self._templar.template(
-            resultant,
-            preserve_trailing_newlines=True,
-            escape_backslashes=False,
-            convert_data=False
-        )
+        resultant = self._check_templar(data=resultant)
 
         # run the copy module
         new_module_args = self._task.args.copy()
@@ -982,6 +978,9 @@ class ActionModule(ActionBase):
 
         # Content from config_template is converted to src
         new_module_args.pop('content', None)
+
+        # remove render enablement option
+        new_module_args.pop('render_template', None)
 
         # Run the copy module
         rc = self._execute_module(
