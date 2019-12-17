@@ -63,6 +63,10 @@ try:
     PermissionError = PermissionError
 except NameError:
     PermissionError = (IOError, OSError)
+try:
+    FileNotFoundError = FileNotFoundError
+except NameError:
+    FileNotFoundError = OSError
 
 
 class IDumper(AnsibleDumper):
@@ -121,6 +125,8 @@ class MultiKeyDict(OrderedDict):
                 if str(value) not in items:
                     items += tuple([str(value)])
                     super(MultiKeyDict, self).__setitem__(key, items)
+            elif isinstance(self[key], MultiKeyDict):
+                pass
             else:
                 if str(self[key]) != str(value):
                     items = tuple([str(self[key]), str(value)])
@@ -313,7 +319,6 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
                     )
                 cursect[optname] = optval
             else:
-
                 optname = '%s-%d' % (
                     STRIP_MARKER,
                     marker_counter
@@ -612,16 +617,19 @@ class ActionModule(ActionBase):
                       ',' in value or (
                         '\n' in value and not yml_multilines))):
                     base_items[key] = re.split(',|\n', value)
-                    base_items[key] = [i.strip() for i in base_items[key] if i]
+                    base_items[key] = [
+                        i.strip() for i in base_items[key] if i
+                    ]
                 elif isinstance(value, list):
                     if isinstance(base_items.get(key), list) and list_extend:
                         base_items[key].extend(value)
                     else:
                         base_items[key] = value
                 elif isinstance(value, (tuple, set)):
-                    if isinstance(base_items.get(key), tuple) and list_extend:
+                    le = list_extend  # assigned for pep8
+                    if isinstance(base_items.get(key), tuple) and le:
                         base_items[key] += tuple(value)
-                    elif isinstance(base_items.get(key), list) and list_extend:
+                    elif isinstance(base_items.get(key), list) and le:
                         base_items[key].extend(list(value))
                     else:
                         base_items[key] = value
@@ -798,9 +806,11 @@ class ActionModule(ActionBase):
                 template_uid = temp_vars['template_uid'] = os.stat(
                     source
                 ).st_uid
-        except PermissionError:
+        except (PermissionError, FileNotFoundError):
             local_task_vars = temp_vars.copy()
-            local_task_vars['connection'] = 'local'
+            if not boolean(self._task.args.get('remote_src', False),
+                           strict=False):
+                local_task_vars['connection'] = 'local'
             stat = self._execute_module(
                 module_name='stat',
                 module_args=dict(path=source),
@@ -829,12 +839,14 @@ class ActionModule(ActionBase):
         try:
             with open(source, 'r') as f:
                 template_data = to_text(f.read())
-        except PermissionError:
+        except (PermissionError, FileNotFoundError):
             local_temp_vars = task_vars.copy()
-            local_temp_vars['connection'] = 'local'
+            if not boolean(self._task.args.get('remote_src', False),
+                           strict=False):
+                local_temp_vars['connection'] = 'local'
             template_data_slurpee = self._execute_module(
                 module_name='slurp',
-                module_args=dict(src=_vars['dest']),
+                module_args=dict(src=source),
                 task_vars=local_temp_vars
             )
             template_data = base64.b64decode(
