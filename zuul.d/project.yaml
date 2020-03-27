@@ -21,11 +21,11 @@
     check:
       jobs:
         - openstack-ansible-python3-ubuntu-bionic
-        - tripleo-ci-centos-7-standalone
+        - tripleo-ci-centos-8-standalone
     gate:
       jobs:
         - openstack-ansible-python3-ubuntu-bionic
-        - tripleo-ci-centos-7-standalone
+        - tripleo-ci-centos-8-standalone
     post:
       jobs:
         - publish-openstack-python-branch-tarball
