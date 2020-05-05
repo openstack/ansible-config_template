@@ -170,8 +170,8 @@
 - name: Validate output has valueless options printed out
   assert:
     that:
-      - "{{ test_ignore_none_type.content | b64decode | search('(?m)^india$') }}"
-      - "{{ test_ignore_none_type.content | b64decode | search('(?m)^juliett kilo$') }}"
+      - "{{ test_ignore_none_type.content | b64decode is search('(?m)^india$') }}"
+      - "{{ test_ignore_none_type.content | b64decode is search('(?m)^juliett kilo$') }}"
 
 
 # Test enhanced comments
