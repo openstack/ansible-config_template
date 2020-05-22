@@ -17,6 +17,7 @@
       - openstack-ansible-role-jobs
       - check-requirements
       - publish-openstack-docs-pti
+      - publish-to-pypi
       - release-notes-jobs-python3
     check:
       jobs:
