@@ -865,13 +865,8 @@ class ActionModule(ActionBase):
             ).decode('utf-8')
 
         self._templar.environment.loader.searchpath = _vars['searchpath']
-        self._templar.set_available_variables(temp_vars)
+        self._templar.available_variables = temp_vars
         resultant = self._check_templar(data=template_data)
-
-        # Access to protected method is unavoidable in Ansible
-        self._templar.set_available_variables(
-            self._templar._available_variables
-        )
 
         type_merger = getattr(self, CONFIG_TYPES.get(_vars['config_type']))
         resultant, config_base = type_merger(
