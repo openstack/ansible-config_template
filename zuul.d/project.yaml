@@ -15,17 +15,16 @@
 - project:
     templates:
       - openstack-ansible-role-jobs
+      - openstack-ansible-deploy-aio_metal-jobs
       - check-requirements
       - publish-openstack-docs-pti
       - publish-to-pypi
       - release-notes-jobs-python3
     check:
       jobs:
-        - openstack-ansible-python3-ubuntu-bionic
         - tripleo-ci-centos-8-standalone
     gate:
       jobs:
-        - openstack-ansible-python3-ubuntu-bionic
         - tripleo-ci-centos-8-standalone
     post:
       jobs:
