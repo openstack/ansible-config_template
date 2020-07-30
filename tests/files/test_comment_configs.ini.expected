@@ -33,6 +33,7 @@ test = test1,test2
 testopt1 = 9000
 # This is another test opt
 #testop2 = over 9000
+testop2 = below 9000
 
 [TestSection]
 things = stuff

@@ -181,6 +181,8 @@
           - test2
       TestSection:
         things: stuff
+      SubSection:
+        testop2: below 9000
     diff_ini:
       added:
         DEFAULT:

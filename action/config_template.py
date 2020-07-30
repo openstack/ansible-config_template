@@ -204,19 +204,15 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
                 use_defaults = False
 
         option = self.optionxform(option)
-        try:
-            index = sectdict.index('#%s' % option)
-        except (ValueError, IndexError):
-            sectdict[option] = value
-        else:
-            if use_defaults:
-                self._defaults = sectdict.insert(index, option, value)
+        if use_defaults:
+            try:
+                index = sectdict.index('#%s' % option)
+            except (ValueError, IndexError):
+                sectdict[option] = value
             else:
-                self._sections[section] = sectdict.insert(
-                    index,
-                    option,
-                    value
-                )
+                self._defaults = sectdict.insert(index, option, value)
+        else:
+            sectdict[option] = value
 
     def _write(self, fp, section, key, item, entry):
         if section:
