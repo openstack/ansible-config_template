@@ -151,7 +151,7 @@
         - four
         - 4
     test_config_yml_hostvars_overrides:
-      test_hostvar: "{{ ansible_default_ipv4.address }}"
+      test_hostvar: "{{ ansible_facts['default_ipv4']['address'] }}"
     test_multiline_strs_yml_overrides:
       new_multiline_str: |
         This should not
@@ -252,7 +252,7 @@
         list_two:
           - "one"
           - "two"
-        test_hostvar: "{{ ansible_default_ipv4.address }}"
+        test_hostvar: "{{ ansible_facts['default_ipv4']['address'] }}"
       changed: {}
       removed: {}
     diff_content_no_overrides_json:
