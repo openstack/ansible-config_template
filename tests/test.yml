@@ -38,7 +38,7 @@
 - include: common/test-prepare-containers.yml
 
 - name: Test config_template
-  hosts: localhost
+  hosts: localhost:container1
   connection: local
   gather_facts: yes
 
@@ -74,9 +74,6 @@
       register: test_list_only_replace_file_expected
 
     - import_tasks: test-common-tasks.yml
-
-    - import_tasks: test-common-tasks.yml
-      delegate_to: container1
 
   handlers:
     - name: test_extend_yml check diff
