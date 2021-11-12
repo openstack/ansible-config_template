@@ -16,4 +16,4 @@ license:
 tags:
     - template
     - config
-repository: "https://github.com/noonedeadpunk/ansible-config_template"
+repository: "https://opendev.org/openstack/ansible-config_template"
