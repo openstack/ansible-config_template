@@ -257,8 +257,8 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
                     value=value,
                     section=section_bool
                 )
-            else:
-                fp.write("\n")
+
+            fp.write("\n")
 
         if self.default_section != 'DEFAULT':
             if not self._sections.get(self.default_section, False):
@@ -493,8 +493,8 @@ class ActionModule(ActionBase):
                             'data. Sections are case sensitive.'
                         )
                         raise errors.AnsibleModuleError(error_msg)
-        else:
-            config_object.close()
+
+        config_object.close()
 
         config_dict_new = OrderedDict()
         config_defaults = config.defaults()
@@ -738,7 +738,7 @@ class ActionModule(ActionBase):
         return True, dict(
             source=source,
             dest=user_dest,
-            config_overrides=self._task.args.get('config_overrides', dict()),
+            config_overrides=self._task.args.get('config_overrides', {}),
             config_type=config_type,
             searchpath=searchpath,
             list_extend=list_extend,
