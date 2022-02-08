@@ -22,10 +22,10 @@
       - release-notes-jobs-python3
     check:
       jobs:
-        - tripleo-ci-centos-8-standalone
+        - tripleo-ci-centos-9-standalone
     gate:
       jobs:
-        - tripleo-ci-centos-8-standalone
+        - tripleo-ci-centos-9-standalone
     post:
       jobs:
         - publish-openstack-python-branch-tarball
