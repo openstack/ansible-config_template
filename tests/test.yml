@@ -14,9 +14,9 @@
 # limitations under the License.
 
 # Setup the host
-- include: common/test-prepare-keys.yml
+- import_playbook: common/test-prepare-keys.yml
 
-- include: common/test-prepare-host.yml
+- import_playbook: common/test-prepare-host.yml
 
 # Temporary work around for issue with lxc_host where on second run after
 # all iptables rules have been removed, the lxc_host role is not checking
@@ -35,7 +35,7 @@
       command: /usr/local/bin/lxc-system-manage iptables-create
       when: do_not_fail_lint
 
-- include: common/test-prepare-containers.yml
+- import_playbook: common/test-prepare-containers.yml
 
 - name: Test config_template
   hosts: localhost:container1
