@@ -66,6 +66,8 @@ try:
 except NameError:
     FileNotFoundError = OSError
 
+if yaml.SafeDumper not in AnsibleDumper.__bases__:
+    AnsibleDumper.__bases__ = (yaml.SafeDumper,) + AnsibleDumper.__bases__
 
 class IDumper(AnsibleDumper):
     def increase_indent(self, flow=False, indentless=False):
