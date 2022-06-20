@@ -69,6 +69,7 @@ except NameError:
 if yaml.SafeDumper not in AnsibleDumper.__bases__:
     AnsibleDumper.__bases__ = (yaml.SafeDumper,) + AnsibleDumper.__bases__
 
+
 class IDumper(AnsibleDumper):
     def increase_indent(self, flow=False, indentless=False):
         return super(IDumper, self).increase_indent(flow, False)
