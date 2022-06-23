@@ -7,14 +7,25 @@ Team and repository tags
 
 .. Change things from this point on
 
-=========================
-OpenStack-Ansible plugins
-=========================
+=================================
+OpenStack-Ansible config_template
+=================================
 
-These are the plugins the OpenStack-Ansible deployment project relies on. The
-plugins can be added to any Ansible project by simply cloning this repository
-and setting up the ``ansible.cfg`` file to point at them as additional plugins
-for your project.
+This module is an ansible plugin that extends regular template functionality
+with the ability to override items in config, in transit, through the use
+of a simple dictionary without having to write out various temp files on target
+machines.
+
+WARNING
+~~~~~~~
+
+Installation from PyPI or as a Python module is deprecated and will be removed
+in future releases.
+Please, use ansible-galaxy to install the collection.
+
+==================================
+More infromation about the project
+==================================
 
 Documentation for the project can be found at:
   https://docs.openstack.org/ansible-config_template/latest/

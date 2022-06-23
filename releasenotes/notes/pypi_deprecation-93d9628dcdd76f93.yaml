@@ -1,0 +1,6 @@
+---
+deprecations:
+  - |
+    Installation from PyPI or as a Python module is deprecated and will be removed
+    in future releases.
+    Please, use ``ansible-galaxy`` for plugin installation.

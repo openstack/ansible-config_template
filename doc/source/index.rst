@@ -1,6 +1,6 @@
-======================
-Config Template plugin
-======================
+==========================
+Config Template collection
+==========================
 
 Synopsis
 --------
@@ -20,7 +20,7 @@ Examples
 
 Example for .conf
 ^^^^^^^^^^^^^^^^^
-The `config_template` plugin has a variety of tools available. A .conf file
+The `config_template` collection has a variety of tools available. A .conf file
 may include options that are not normally supported in an INI file, but are
 used in OpenStack, like ListOpt and MultiStrOpt.
 
@@ -146,26 +146,28 @@ Resulting file on the remote host:
   [hello]
   cruel = world
 
-Loading
--------
+Installing collection
+---------------------
 
-To use the plugin, include this role in your meta/main.yml dependencies
+To use the collection, include this in your meta/main.yml:
 
 .. code-block :: yaml
 
-   dependencies:
-     - role: ansible-config_template
+   collections:
+     - openstack.config_template
 
-Alternatively, move the role to the appropriate plugin folder location
-of your ansible configuration.
 
-Example role requirement overload for automatic plugin download
----------------------------------------------------------------
 
-The Ansible role requirement file can be used to overload the
-``ansible-galaxy`` command to automatically fetch the plugins for
+Also the Ansible requirement file can be used with the
+``ansible-galaxy`` command to automatically fetch the collections for
 you in a given project. To do this add the following lines to your
-``ansible-role-requirements.yml`` file.
+``requirements.yml`` file.
 
 .. literalinclude:: ../../examples/ansible-role-requirements.yml
    :language: yaml
+
+After that simple run the following command to get requirements installed:
+
+  .. code-block :: shell
+
+    $ ansible-galaxy install -r requirements.yml
