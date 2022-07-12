@@ -29,3 +29,7 @@
     post:
       jobs:
         - publish-openstack-python-branch-tarball
+
+    tag:
+      jobs:
+        - ansible-collections-openstack-release
