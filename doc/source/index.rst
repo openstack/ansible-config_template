@@ -42,6 +42,7 @@ Playbook:
 
             [section1]
             option1 = value1
+            option2 = value2
           dest: "test_dst.conf"
           config_type: "ini"
           config_overrides:
@@ -49,6 +50,7 @@ Playbook:
               cruel: world
             section1:
               option1: value2
+              option2: {}
             orderedListSection:
               listOpt:
                 - listItem1
@@ -77,6 +79,11 @@ Resulting file on the remote host:
   [multiStrOpSection]
   multiStrOpOption = multiStrOp1
   multiStrOpOption = multiStrOp2
+
+Take notice of the `option2` in `section1`, which is removed in the output but
+requires an empty dictionary in the playbook YAML. The empty dictionary is
+translated to `None` value and the default behavior is to remove keys with
+`None` values. See parameter `ignore_none_type`, which defaults to `true`.
 
 A practical example would be for something like OpenStack's nova.conf where the
 input of:
