@@ -737,6 +737,10 @@ class ActionModule(ActionBase):
         remote_src = self._task.args.get('remote_src', False)
 
         yml_multilines = self._task.args.get('yml_multilines', False)
+        block_end_string = self._task.args.get('block_end_string', '%}')
+        block_start_string = self._task.args.get('block_start_string', '{%')
+        variable_end_string = self._task.args.get('variable_end_string', '}}')
+        variable_start_string = self._task.args.get('variable_start_string', '{{')
 
         return True, dict(
             source=source,
@@ -748,7 +752,11 @@ class ActionModule(ActionBase):
             ignore_none_type=ignore_none_type,
             default_section=default_section,
             yml_multilines=yml_multilines,
-            remote_src=remote_src
+            remote_src=remote_src,
+            block_end_string=block_end_string,
+            block_start_string=block_start_string,
+            variable_end_string=variable_end_string,
+            variable_start_string=variable_start_string
         )
 
     def resultant_ini_as_dict(self, resultant_dict, return_dict=None):
@@ -766,14 +774,22 @@ class ActionModule(ActionBase):
 
         return return_dict
 
-    def _check_templar(self, data):
+    def _check_templar(self, data, extra):
         if boolean(self._task.args.get('render_template', True)):
-            return self._templar.template(
-                data,
-                preserve_trailing_newlines=True,
-                escape_backslashes=False,
-                convert_data=False
-            )
+            templar = self._templar
+            with templar.set_temporary_context(
+                variable_start_string=extra['variable_start_string'],
+                variable_end_string=extra['variable_end_string'],
+                block_start_string=extra['block_start_string'],
+                block_end_string=extra['block_end_string'],
+                searchpath=extra['searchpath']
+            ):
+                return templar.template(
+                    data,
+                    preserve_trailing_newlines=True,
+                    escape_backslashes=False,
+                    convert_data=False
+                )
         else:
             return data
 
@@ -862,14 +878,12 @@ class ActionModule(ActionBase):
                 template_data_slurpee['content']
             ).decode('utf-8')
 
-        self._templar.environment.loader.searchpath = _vars['searchpath']
-
         if LooseVersion(__ansible_version__) < LooseVersion("2.9"):
             self._templar.set_available_variables(temp_vars)
         else:
             self._templar.available_variables = temp_vars
 
-        resultant = self._check_templar(data=template_data)
+        resultant = self._check_templar(data=template_data, extra=_vars)
 
         if LooseVersion(__ansible_version__) < LooseVersion("2.9"):
             # Access to protected method is unavoidable in Ansible
@@ -898,7 +912,7 @@ class ActionModule(ActionBase):
             if 'content' in slurpee:
                 dest_data = base64.b64decode(
                     slurpee['content']).decode('utf-8')
-                resultant_dest = self._check_templar(data=dest_data)
+                resultant_dest = self._check_templar(data=dest_data, extra=_vars)
                 type_merger = getattr(self,
                                       CONFIG_TYPES.get(_vars['config_type']))
                 _, config_new = type_merger(
@@ -941,7 +955,7 @@ class ActionModule(ActionBase):
 
         # Re-template the resultant object as it may have new data within it
         #  as provided by an override variable.
-        resultant = self._check_templar(data=resultant)
+        resultant = self._check_templar(data=resultant, extra=_vars)
 
         # run the copy module
         new_module_args = self._task.args.copy()
@@ -976,6 +990,10 @@ class ActionModule(ActionBase):
         new_module_args.pop('ignore_none_type', None)
         new_module_args.pop('default_section', None)
         new_module_args.pop('yml_multilines', None)
+        new_module_args.pop('block_end_string', None)
+        new_module_args.pop('block_start_string', None)
+        new_module_args.pop('variable_end_string', None)
+        new_module_args.pop('variable_start_string', None)
 
         # While this is in the copy module we dont want to use it.
         new_module_args.pop('remote_src', None)

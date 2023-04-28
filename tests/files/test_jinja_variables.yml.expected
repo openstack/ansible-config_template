@@ -1,0 +1,4 @@
+section1:
+  alfa: '{{ alfa_hotel }}'
+  baz: baz
+  tango: tango
