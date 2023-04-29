@@ -1,0 +1,9 @@
+[foo]
+# comment
+bar = {{ baz }}
+foo = delta
+foobar = [% test_raw_content_variable %]
+
+[section2]
+alfa = delta
+
