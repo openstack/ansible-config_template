@@ -1,0 +1,10 @@
+---
+features:
+  - |
+    Added support for arguments that can be used to avoid templating Jinja
+    content:
+
+      * variable_start_string
+      * variable_end_string
+      * block_start_string
+      * block_end_string

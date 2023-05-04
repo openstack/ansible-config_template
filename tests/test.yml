@@ -73,6 +73,11 @@
         src: "{{ playbook_dir }}/files/test_list_only_replace.yml.expected"
       register: test_list_only_replace_file_expected
 
+    - name: Read expected test_jinja_variables.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_jinja_variables.yml.expected"
+      register: test_jinja_variables_expected
+
     - import_tasks: test-common-tasks.yml
 
   handlers:
@@ -168,6 +173,9 @@
         baz: "hotel"
       section3:
         alfa: "bravo"
+    test_jinja_variables:
+      section1:
+        baz: "baz"
     test_enhanced_comments_ini_overrides:
       DEFAULT:
         default_availability_zone: zone1

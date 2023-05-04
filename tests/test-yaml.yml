@@ -173,3 +173,28 @@
   assert:
     that:
       - "(test_list_only_replace_file_expected.content | b64decode) == (test_list_only_replace_file.content | b64decode)"
+
+- name: Test template with jinja vars in it
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_jinja_variables.yml"
+    dest: "/tmp/test_jinja_variables.yml"
+    config_overrides: "{{ test_jinja_variables }}"
+    config_type: yaml
+    variable_end_string: "%]"
+    variable_start_string: "[%"
+
+- name: Read test_jinja_variables.yml
+  slurp:
+    src: /tmp/test_jinja_variables.yml
+  register: test_jinja_variables
+
+- debug:
+    msg: "Jinja strings - {{ test_jinja_variables.content | b64decode }}"
+
+- debug:
+    msg: "Jinja strings Expected - {{ test_jinja_variables_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(test_jinja_variables_expected.content | b64decode) == (test_jinja_variables.content | b64decode)"
