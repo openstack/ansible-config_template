@@ -284,3 +284,54 @@
     config_overrides: "{{ test_diff_overrides }}"
   register: test_diff_remove_ini
   notify: test_diff_remove_ini check diff
+
+# Check if {% raw %} is working
+- name: Test template with jinja vars in it
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_raw_content.ini"
+    dest: "/tmp/test_raw_content.ini"
+    config_overrides: "{{ test_raw_content_overrides }}"
+    config_type: ini
+
+- name: Test content with jinja vars in it
+  config_template:
+    content: |
+      #jinja2:variable_start_string:'[%', variable_end_string:'%]'
+
+      [foo]
+      # comment
+      bar = {{ baz }}
+      foo = [% test_raw_content_variable %]
+      foobar = {% raw %}[% test_raw_content_variable %]{% endraw %}
+    dest: "/tmp/test_raw_usr_content.ini"
+    config_overrides: "{{ test_raw_content_overrides }}"
+    config_type: ini
+
+- name: Read test_raw_content.ini
+  slurp:
+    src: /tmp/test_raw_content.ini
+  register: test_raw_content
+
+- name: Read test_raw_usr_content.ini
+  slurp:
+    src: /tmp/test_raw_usr_content.ini
+  register: test_raw_usr_content
+
+- debug:
+    msg: "Raw Jinja content - {{ test_raw_content.content | b64decode }}"
+
+- debug:
+    msg: "Raw Jinja user content - {{ test_raw_usr_content.content | b64decode }}"
+
+- debug:
+    msg: "Raw Jinja content Expected - {{ test_raw_content_expected.content | b64decode }}"
+
+- name: Compare files
+  assert:
+    that:
+      - "(test_raw_content_expected.content | b64decode) == (test_raw_usr_content.content | b64decode)"
+
+- name: Compare files
+  assert:
+    that:
+      - "(test_raw_content_expected.content | b64decode) == (test_raw_content.content | b64decode)"

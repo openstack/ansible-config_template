@@ -883,7 +883,10 @@ class ActionModule(ActionBase):
         else:
             self._templar.available_variables = temp_vars
 
-        resultant = self._check_templar(data=template_data, extra=_vars)
+        if self._task.args.get('content'):
+            resultant = template_data
+        else:
+            resultant = self._check_templar(data=template_data, extra=_vars)
 
         if LooseVersion(__ansible_version__) < LooseVersion("2.9"):
             # Access to protected method is unavoidable in Ansible
@@ -952,10 +955,6 @@ class ActionModule(ActionBase):
                     ]
                 }
                 changed = len(mods['changed']) > 0
-
-        # Re-template the resultant object as it may have new data within it
-        #  as provided by an override variable.
-        resultant = self._check_templar(data=resultant, extra=_vars)
 
         # run the copy module
         new_module_args = self._task.args.copy()

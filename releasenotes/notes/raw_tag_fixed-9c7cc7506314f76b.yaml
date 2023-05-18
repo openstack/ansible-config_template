@@ -1,0 +1,5 @@
+---
+fixes:
+  - |
+    Jinja2 {% raw %} tag and string escapnig, as well as special headers in
+    template files are working as expected now.

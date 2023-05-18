@@ -78,6 +78,11 @@
         src: "{{ playbook_dir }}/files/test_jinja_variables.yml.expected"
       register: test_jinja_variables_expected
 
+    - name: Read expected test_jinja_variables.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_raw_content.ini.expected"
+      register: test_raw_content_expected
+
     - import_tasks: test-common-tasks.yml
 
   handlers:
@@ -176,6 +181,10 @@
     test_jinja_variables:
       section1:
         baz: "baz"
+    test_raw_content_variable: "delta"
+    test_raw_content_overrides:
+      section2:
+        alfa: "{{ test_raw_content_variable }}"
     test_enhanced_comments_ini_overrides:
       DEFAULT:
         default_availability_zone: zone1

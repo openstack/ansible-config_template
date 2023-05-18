@@ -153,7 +153,63 @@ Resulting file on the remote host:
   [hello]
   cruel = world
 
-Installing collection
+
+Preventing content from renderring
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+There are few different way that can be used to prevent some content
+from being renderred. First one is to use Jinja's ``{% raw %}`` tag.
+
+Template:
+
+.. code-block :: ini
+
+  [foo]
+  # comment
+  bar = {% raw %}{{ baz }}{% endraw %}
+
+
+Result:
+
+.. code-block :: ini
+
+  [foo]
+  # comment
+  bar = {{ baz }}
+
+Another way around could be customizing Jinja tags used to identify variables
+and block string. For that `variable_start/end_string` or `block_start/end_string`
+options could be used. These variables could be provided as an arguments to
+the module or by adding a special header to template file.
+
+.. Note::
+
+  Please mention, that changing identification for start/end of blocks works only
+  inside the template and does not affect ``config_overrides`` option.
+
+Template:
+
+.. code-block :: ini
+
+
+  #jinja2:variable_start_string:'[%', variable_end_string:'%]'
+
+  [foo]
+  # comment
+  bar = {{ baz }}
+  foo = [% inventory_hostname %]
+
+
+Result:
+
+.. code-block :: ini
+
+  [foo]
+  # comment
+  bar = {{ baz }}
+  foo = localhost
+
+
 ---------------------
 
 To use the collection, include this in your meta/main.yml:
