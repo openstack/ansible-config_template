@@ -153,6 +153,76 @@ Resulting file on the remote host:
   [hello]
   cruel = world
 
+Example of overrides with variable in mapping key
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Due to Ansible design `dictionary keys are not templated`_, which means that
+override like that will not work as might be expected:
+
+.. code-block :: yaml
+
+  - hosts: remote_host
+    gather_facts: no
+    tasks:
+      - config_template:
+          remote_src: true
+          content: |
+            [foo]
+            bar = baz
+          dest: "/etc/test_dst.ini"
+          config_type: "ini"
+          config_overrides:
+            "{{ inventory_hostname }}":
+              cruel: world
+
+Resulting file of such override will be following on the remote host:
+
+.. code-block :: ini
+
+  [foo]
+  bar = baz
+
+  [{{ inventory_hostname }}]
+  cruel = world
+
+In order to properly render dictionary keys it's proposed to workaround the
+limitation by defining dictionary as Jinja2 template, rather then Ansible
+mapping.
+
+Working as expected example can be found below:
+
+.. code-block :: yaml
+
+  - hosts: remote_host
+    gather_facts: no
+    tasks:
+      - config_template:
+          remote_src: true
+          content: |
+            [foo]
+            bar = baz
+          dest: "/etc/test_dst.ini"
+          config_type: "ini"
+          config_overrides: |-
+            {{
+              {
+                inventory_hostname: {
+                  'cruel': 'world'
+                }
+              }
+            }}
+
+Resulting file of the override above will be following file on the remote host:
+
+.. code-block :: ini
+
+  [foo]
+  bar = baz
+
+  [remote_host]
+  cruel = world
+
+.. _dictionary keys are not templated: https://github.com/ansible/ansible/issues/17324
 
 Preventing content from renderring
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
