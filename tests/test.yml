@@ -63,6 +63,11 @@
         src: "{{ playbook_dir }}/files/test_multiline_strs.yml.expected"
       register: multiline_strs_file_expected
 
+    - name: Read expected test_multiline_strs.yml
+      slurp:
+        src: "{{ playbook_dir }}/files/test_multiline_strs.json.expected"
+      register: multiline_strs_json_file_expected
+
     - name: Read expected test_list_only.yml
       slurp:
         src: "{{ playbook_dir }}/files/test_list_only.yml.expected"
@@ -166,6 +171,9 @@
       new_multiline_str: |
         This should not
         be a list
+    test_multiline_strs_json_overrides:
+      "list": "Curious cat investigates\n, a ball of yarn in sight"
+      "cloud-init": "#cloud-config\npackage_upgrade: True\npackages:\n - htop"
     test_list_only_overrides:
       - things: stuff
     test_default_section_overrides:

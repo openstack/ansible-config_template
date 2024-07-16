@@ -556,7 +556,8 @@ class ActionModule(ActionBase):
         merged_resultant = self._merge_dict(
             base_items=original_resultant,
             new_items=config_overrides,
-            list_extend=list_extend
+            list_extend=list_extend,
+            yml_multilines=yml_multilines
         )
         return json.dumps(
             merged_resultant,

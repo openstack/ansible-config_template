@@ -1,0 +1,8 @@
+{
+    "cloud-init": "#cloud-config\npackage_upgrade: True\npackages:\n - htop",
+    "list": [
+        "Curious cat investigates",
+        "a ball of yarn in sight"
+    ],
+    "string": "Freshly baked cookies\n, waiting to be enjoyed."
+}

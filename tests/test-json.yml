@@ -43,3 +43,26 @@
   assert:
     that:
       - "(content_no_overrides_file.content | b64decode | from_json) == (content_no_overrides_file_expected.content | b64decode | from_json)"
+
+
+# Values containing newlines should not be chopped into a list
+# when yml_multilines is set to True
+- name: Test multiline strings in json
+  config_template:
+    src: "{{ playbook_dir }}/templates/test_multiline_strs.json"
+    dest: "/tmp/multiline_strs.json"
+    config_overrides: "{{ test_multiline_strs_json_overrides }}"
+    config_type: json
+    yml_multilines: True
+- name: Read multiline_strs.json
+  slurp:
+    src: /tmp/multiline_strs.json
+  register: multiline_strs_file
+- debug:
+    msg: "Multiline JSON Strings - {{ multiline_strs_file.content | b64decode }}"
+- debug:
+    msg: "Multiline JSON Strings Expected - {{ multiline_strs_json_file_expected.content | b64decode }}"
+- name: Compare files
+  assert:
+    that:
+      - "(multiline_strs_json_file_expected.content | b64decode) == (multiline_strs_file.content | b64decode)"
