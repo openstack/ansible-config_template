@@ -4,7 +4,7 @@ description: |-
   Template includes config_template module, that leverages template module and
   adds override functionality to different types of config files.
 name: "config_template"
-version: "2.1.0"
+version: "2.1.1"
 readme: "README.rst"
 authors:
     - Kevin Carter <kevin.carter@rackspace.com>
