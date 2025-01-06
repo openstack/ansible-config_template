@@ -15,18 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with Ansible.  If not, see <http://www.gnu.org/licenses/>.
 
-try:
-    import ConfigParser
-except ImportError:
-    import configparser as ConfigParser
-import datetime
-
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
-
 import base64
+import configparser
+import datetime
 import json
 import os
 import pwd
@@ -36,6 +27,7 @@ import yaml
 import tempfile as tmpfilelib
 
 from collections import OrderedDict
+from io import StringIO
 
 from ansible.plugins.action import ActionBase
 from ansible.module_utils._text import to_bytes, to_text
@@ -43,7 +35,6 @@ from ansible.module_utils.parsing.convert_bool import boolean
 from ansible import constants as C
 from ansible import errors
 from ansible.parsing.yaml.dumper import AnsibleDumper
-from distutils.version import LooseVersion
 from ansible import __version__ as __ansible_version__
 
 __metaclass__ = type
@@ -55,16 +46,6 @@ CONFIG_TYPES = {
 }
 
 STRIP_MARKER = '__MARKER__'
-
-# Py3 vs Py2 error handling. When Py2 is no longer supported, remove this.
-try:
-    PermissionError = PermissionError
-except NameError:
-    PermissionError = (IOError, OSError)
-try:
-    FileNotFoundError = FileNotFoundError
-except NameError:
-    FileNotFoundError = OSError
 
 if yaml.SafeDumper not in AnsibleDumper.__bases__:
     AnsibleDumper.__bases__ = (yaml.SafeDumper,) + AnsibleDumper.__bases__
@@ -136,8 +117,8 @@ class MultiKeyDict(OrderedDict):
             return super(MultiKeyDict, self).__setitem__(key, value)
 
 
-class ConfigTemplateParser(ConfigParser.RawConfigParser):
-    """ConfigParser which supports multi key value.
+class ConfigTemplateParser(configparser.RawConfigParser):
+    """configparser which supports multi key value.
     The parser will use keys with multiple variables in a set as a multiple
     key value within a configuration file.
     Default Configuration file:
@@ -192,7 +173,7 @@ class ConfigTemplateParser(ConfigParser.RawConfigParser):
         self._empty_lines_in_values = kwargs.get('allow_no_value', True)
         self._strict = kwargs.get('strict', False)
         self._allow_no_value = self._empty_lines_in_values
-        ConfigParser.RawConfigParser.__init__(self, *args, **kwargs)
+        configparser.RawConfigParser.__init__(self, *args, **kwargs)
 
     def set(self, section, option, value=None):
         if not section or section == 'DEFAULT':
@@ -439,34 +420,21 @@ class ActionModule(ActionBase):
             #  already existing.
             try:
                 config.add_section(section_name)
-            except (ConfigParser.DuplicateSectionError, ValueError):
+            except (configparser.DuplicateSectionError, ValueError):
                 pass
 
-        # If there is an exception loading the RawConfigParser The config obj
-        #  is loaded again without the extra option. This is being done to
-        #  support older python.
-        try:
-            config = ConfigTemplateParser(
-                allow_no_value=True,
-                dict_type=MultiKeyDict,
-                ignore_none_type=ignore_none_type,
-                default_section=default_section,
-                yml_multilines=yml_multilines,
-                comment_prefixes='/'
-            )
-            config.optionxform = str
-        except Exception:
-            config = ConfigTemplateParser(
-                allow_no_value=True,
-                dict_type=MultiKeyDict,
-                comment_prefixes='/'
-            )
+        config = ConfigTemplateParser(
+            allow_no_value=True,
+            dict_type=MultiKeyDict,
+            ignore_none_type=ignore_none_type,
+            default_section=default_section,
+            yml_multilines=yml_multilines,
+            comment_prefixes='/'
+        )
+        config.optionxform = str
 
         config_object = StringIO(resultant)
-        try:
-            config.read_file(config_object)
-        except AttributeError:
-            config.readfp(config_object)
+        config.read_file(config_object)
 
         if default_section != 'DEFAULT':
             _add_section(section_name=default_section)
@@ -489,7 +457,7 @@ class ActionModule(ActionBase):
                 for key, value in items.items():
                     try:
                         self._option_write(config, section, key, value)
-                    except ConfigParser.NoSectionError as exp:
+                    except configparser.NoSectionError as exp:
                         error_msg = str(exp)
                         error_msg += (
                             ' Try being more explicit with your override'
@@ -728,7 +696,7 @@ class ActionModule(ActionBase):
         # Get ignore_none_type
         # In some situations(i.e. my.cnf files), INI files can have valueless
         # options that don't have a '=' or ':' suffix. In these cases,
-        # ConfigParser gives these options a "None" value. If ignore_none_type
+        # configparser gives these options a "None" value. If ignore_none_type
         # is set to true, these key/value options will be ignored, if it's set
         # to false, then ConfigTemplateParser will write out only the option
         # name with out the '=' or ':' suffix. The default is true.
@@ -879,21 +847,12 @@ class ActionModule(ActionBase):
                 template_data_slurpee['content']
             ).decode('utf-8')
 
-        if LooseVersion(__ansible_version__) < LooseVersion("2.9"):
-            self._templar.set_available_variables(temp_vars)
-        else:
-            self._templar.available_variables = temp_vars
+        self._templar.available_variables = temp_vars
 
         if self._task.args.get('content'):
             resultant = template_data
         else:
             resultant = self._check_templar(data=template_data, extra=_vars)
-
-        if LooseVersion(__ansible_version__) < LooseVersion("2.9"):
-            # Access to protected method is unavoidable in Ansible
-            self._templar.set_available_variables(
-                self._templar._available_variables
-            )
 
         type_merger = getattr(self, CONFIG_TYPES.get(_vars['config_type']))
         resultant, config_base = type_merger(
@@ -964,24 +923,14 @@ class ActionModule(ActionBase):
             self._connection._shell.join_path(tmp, 'source'),
             resultant
         )
-        if LooseVersion(__ansible_version__) < LooseVersion("2.6"):
-            new_module_args.update(
-                dict(
-                    src=transferred_data,
-                    dest=_vars['dest'],
-                    original_basename=os.path.basename(source),
-                    follow=True,
-                ),
-            )
-        else:
-            new_module_args.update(
-                dict(
-                    src=transferred_data,
-                    dest=_vars['dest'],
-                    _original_basename=os.path.basename(source),
-                    follow=True,
-                ),
-            )
+        new_module_args.update(
+            dict(
+                src=transferred_data,
+                dest=_vars['dest'],
+                _original_basename=os.path.basename(source),
+                follow=True,
+            ),
+        )
 
         # Remove data types that are not available to the copy module
         new_module_args.pop('config_overrides', None)
