@@ -13,80 +13,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Setup the host
-- import_playbook: common/test-prepare-keys.yml
-
-- import_playbook: common/test-prepare-host.yml
-
-# Temporary work around for issue with lxc_host where on second run after
-# all iptables rules have been removed, the lxc_host role is not checking
-# that the rules are defined and adding them back in if they are not.
-- name: Add iptables rules back in
-  hosts: localhost
-  connection: local
-  gather_facts: yes
-  become: yes
-
-  vars:
-    do_not_fail_lint: true
-
-  tasks:
-    - name: Ensure lxc iptables rules
-      command: /usr/local/bin/lxc-system-manage iptables-create
-      when: do_not_fail_lint
-
-- import_playbook: common/test-prepare-containers.yml
-
 - name: Test config_template
-  hosts: localhost:container1
-  connection: local
+  hosts: all
   gather_facts: yes
 
   tasks:
-    - name: Read expected test_extend.yml
-      slurp:
-        src: "{{ playbook_dir }}/files/test_extend.yml.expected"
-      register: extend_file_expected
 
-    - name: Read expected test_no_extend.yml
-      slurp:
-        src: "{{ playbook_dir }}/files/test_no_extend.yml.expected"
-      register: no_extend_file_expected
+    - name: Read test data
+      delegate_to: localhost
+      block:
+        - name: Read expected test_extend.yml
+          slurp:
+            src: "{{ playbook_dir }}/files/test_extend.yml.expected"
+          register: extend_file_expected
 
-    - name: Read expected test_content_no_overrides.json
-      slurp:
-        src: "{{ playbook_dir }}/files/test_content_no_overrides.json.expected"
-      register: content_no_overrides_file_expected
+        - name: Read expected test_no_extend.yml
+          slurp:
+            src: "{{ playbook_dir }}/files/test_no_extend.yml.expected"
+          register: no_extend_file_expected
 
-    - name: Read expected test_multiline_strs.yml
-      slurp:
-        src: "{{ playbook_dir }}/files/test_multiline_strs.yml.expected"
-      register: multiline_strs_file_expected
+        - name: Read expected test_content_no_overrides.json
+          slurp:
+            src: "{{ playbook_dir }}/files/test_content_no_overrides.json.expected"
+          register: content_no_overrides_file_expected
 
-    - name: Read expected test_multiline_strs.yml
-      slurp:
-        src: "{{ playbook_dir }}/files/test_multiline_strs.json.expected"
-      register: multiline_strs_json_file_expected
+        - name: Read expected test_multiline_strs.yml
+          slurp:
+            src: "{{ playbook_dir }}/files/test_multiline_strs.yml.expected"
+          register: multiline_strs_file_expected
 
-    - name: Read expected test_list_only.yml
-      slurp:
-        src: "{{ playbook_dir }}/files/test_list_only.yml.expected"
-      register: test_list_only_file_expected
+        - name: Read expected test_multiline_strs.yml
+          slurp:
+            src: "{{ playbook_dir }}/files/test_multiline_strs.json.expected"
+          register: multiline_strs_json_file_expected
 
-    - name: Read expected test_list_only.yml
-      slurp:
-        src: "{{ playbook_dir }}/files/test_list_only_replace.yml.expected"
-      register: test_list_only_replace_file_expected
+        - name: Read expected test_list_only_extend.yml
+          slurp:
+            src: "{{ playbook_dir }}/files/test_list_only_extend.yml.expected"
+          register: test_list_only_extend_file_expected
 
-    - name: Read expected test_jinja_variables.yml
-      slurp:
-        src: "{{ playbook_dir }}/files/test_jinja_variables.yml.expected"
-      register: test_jinja_variables_expected
+        - name: Read expected test_list_only_replace.yml
+          slurp:
+            src: "{{ playbook_dir }}/files/test_list_only_replace.yml.expected"
+          register: test_list_only_replace_file_expected
 
-    - name: Read expected test_jinja_variables.yml
-      slurp:
-        src: "{{ playbook_dir }}/files/test_raw_content.ini.expected"
-      register: test_raw_content_expected
+        - name: Read expected test_jinja_variables.yml
+          slurp:
+            src: "{{ playbook_dir }}/files/test_jinja_variables.yml.expected"
+          register: test_jinja_variables_expected
+
+        - name: Read expected test_jinja_variables.yml
+          slurp:
+            src: "{{ playbook_dir }}/files/test_raw_content.ini.expected"
+          register: test_raw_content_expected
 
     - import_tasks: test-common-tasks.yml
 
@@ -166,7 +145,7 @@
         - four
         - 4
     test_config_yml_hostvars_overrides:
-      test_hostvar: "{{ ansible_facts['default_ipv4']['address'] }}"
+      test_hostvar: "{{ ansible_facts['architecture'] }}"
     test_multiline_strs_yml_overrides:
       new_multiline_str: |
         This should not
@@ -277,7 +256,7 @@
         list_two:
           - "one"
           - "two"
-        test_hostvar: "{{ ansible_facts['default_ipv4']['address'] }}"
+        test_hostvar: "{{ ansible_facts['architecture'] }}"
       changed: {}
       removed: {}
     diff_content_no_overrides_json:

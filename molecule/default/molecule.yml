@@ -1,0 +1,34 @@
+---
+dependency:
+  name: galaxy
+  options:
+    requirements-file: requirements.yml
+    force: true
+
+driver:
+  name: docker
+
+platforms:
+  - name: "config-template-${MOLECULE_SCENARIO_NAME}"
+    image: "${DOCKER_REGISTRY:-quay.io/gotmax23}/${DOCKER_IMAGE_TAG:-debian-systemd:bookworm}"
+    command: ${DOCKER_COMMAND:-""}
+    pre_build_image: true
+    privileged: true
+    systemd: true
+    groups:
+      - config_template
+
+provisioner:
+  name: ansible
+  lint:
+    name: ansible-lint
+  playbooks:
+    converge: ../../tests/test.yml
+  config_options:
+    defaults:
+      inject_facts_as_vars: false
+  options:
+    diff: True
+
+scenario:
+  name: default

@@ -22,21 +22,30 @@
     dest: "/tmp/test.ini"
     config_overrides: "{{ test_config_ini_overrides }}"
     config_type: "ini"
+  # NOTE(jrosser) the input template has an empty [bar] section which is removed in the output, failing idempotency
+  diff: false
 
 - name: Read test.ini
   slurp:
     src: /tmp/test.ini
   register: ini_file
 
+- name: Set content fact
+  set_fact:
+    _ini_file: "{{ ini_file.content | b64decode | community.general.from_ini }}"
+
 - debug:
-    msg: "ini - {{ ini_file.content | b64decode }}"
+    msg: "ini - {{ _ini_file }}"
 
 - name: Validate output
   assert:
     that:
-      - "(lookup('ini', 'new_key section=DEFAULT file=/tmp/test.ini')) == 'new_value'"
-      - "(lookup('ini', 'baz section=foo file=/tmp/test.ini')) == 'bar'"
-
+      - _ini_file['DEFAULT'] is defined
+      - _ini_file['DEFAULT']['new_key'] is defined
+      - _ini_file['DEFAULT']['new_key'] == 'new_value'
+      - _ini_file['foo'] is defined
+      - _ini_file['foo']['baz'] is defined
+      - _ini_file['foo']['baz'] == 'bar'
 
 # Test basic function of config_template with content instead of src
 - name: Template test INI template
@@ -45,21 +54,30 @@
     dest: "/tmp/test_with_content.ini"
     config_overrides: "{{ test_config_ini_overrides }}"
     config_type: "ini"
+  # NOTE(jrosser) the input template has an empty [bar] section which is removed in the output, failing idempotency
+  diff: false
 
-- name: Read test.ini
+- name: Read test_with_content.ini
   slurp:
     src: /tmp/test_with_content.ini
   register: ini_file_with_content
 
+- name: Set content fact
+  set_fact:
+    _ini_file_with_content: "{{ ini_file_with_content.content | b64decode | community.general.from_ini }}"
+
 - debug:
-    msg: "ini - {{ ini_file_with_content.content | b64decode }}"
+    msg: "ini_file_with_content - {{ _ini_file_with_content }}"
 
 - name: Validate output
   assert:
     that:
-      - "(lookup('ini', 'new_key section=DEFAULT file=/tmp/test_with_content.ini')) == 'new_value'"
-      - "(lookup('ini', 'baz section=foo file=/tmp/test_with_content.ini')) == 'bar'"
-
+      - _ini_file['DEFAULT'] is defined
+      - _ini_file['DEFAULT']['new_key'] is defined
+      - _ini_file['DEFAULT']['new_key'] == 'new_value'
+      - _ini_file['foo'] is defined
+      - _ini_file['foo']['baz'] is defined
+      - _ini_file['foo']['baz'] == 'bar'
 
 # Test multistropt ordering
 - name: Template MultiStrOpts using overrides
@@ -258,32 +276,35 @@
     that:
       - _test_default_section_file == _test_default_section_expected_file
 
+- name: Block for tasks which cannot be idempotent
+  tags:
+    - molecule-idempotence-notest
+  block:
+    # Check output diff
+    - name: Write ini for testing diff output
+      config_template:
+        src: "{{ playbook_dir }}/templates/test_diff.ini"
+        dest: "/tmp/test_diff.ini"
+        config_type: "ini"
+        config_overrides: {}
 
-# Check output diff
-- name: Write ini for testing diff output
-  config_template:
-    src: "{{ playbook_dir }}/templates/test_diff.ini"
-    dest: "/tmp/test_diff.ini"
-    config_type: "ini"
-    config_overrides: {}
+    - name: Test ini with additions and changed
+      config_template:
+        src: "{{ playbook_dir }}/templates/test_diff.ini"
+        dest: "/tmp/test_diff.ini"
+        config_type: "ini"
+        config_overrides: "{{ test_diff_overrides }}"
+      register: test_diff_ini
+      notify: test_diff_ini check diff
 
-- name: Test ini with additions and changed
-  config_template:
-    src: "{{ playbook_dir }}/templates/test_diff.ini"
-    dest: "/tmp/test_diff.ini"
-    config_type: "ini"
-    config_overrides: "{{ test_diff_overrides }}"
-  register: test_diff_ini
-  notify: test_diff_ini check diff
-
-- name: Test ini with removes
-  config_template:
-    src: "{{ playbook_dir }}/templates/test_diff_remove.ini"
-    dest: "/tmp/test_diff.ini"
-    config_type: "ini"
-    config_overrides: "{{ test_diff_overrides }}"
-  register: test_diff_remove_ini
-  notify: test_diff_remove_ini check diff
+    - name: Test ini with removes
+      config_template:
+        src: "{{ playbook_dir }}/templates/test_diff_remove.ini"
+        dest: "/tmp/test_diff.ini"
+        config_type: "ini"
+        config_overrides: "{{ test_diff_overrides }}"
+      register: test_diff_remove_ini
+      notify: test_diff_remove_ini check diff
 
 # Check if {% raw %} is working
 - name: Test template with jinja vars in it
@@ -292,6 +313,8 @@
     dest: "/tmp/test_raw_content.ini"
     config_overrides: "{{ test_raw_content_overrides }}"
     config_type: ini
+  # NOTE(jrosser) diff true will try to evaluate {{ baz }} when the connection type is not local
+  diff: false
 
 - name: Test content with jinja vars in it
   config_template:
@@ -306,6 +329,8 @@
     dest: "/tmp/test_raw_usr_content.ini"
     config_overrides: "{{ test_raw_content_overrides }}"
     config_type: ini
+  # NOTE(jrosser) diff true will try to evaluate {{ baz }} when the connection type is not local
+  diff: false
 
 - name: Read test_raw_content.ini
   slurp:
