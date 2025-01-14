@@ -96,9 +96,9 @@ input of:
         - ComputeFilter
         - NUMATopologyFilter
     pci:
-      ? passthrough_whitelist: '{"address":"*:0a:00.*",
-        "physical_network":"pn1"}'
-      ? passthrough_whitelist: '{"vendor_id":"1137","product_id":"0071"}'
+      passthrough_whitelist:
+        ? '{"address":"*:0a:00.*","physical_network":"pn1"}'
+        ? '{"vendor_id":"1137","product_id":"0071"}'
 
 Would produce:
 
