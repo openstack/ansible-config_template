@@ -26,7 +26,6 @@ import time
 import yaml
 import tempfile as tmpfilelib
 
-from collections import OrderedDict
 from io import StringIO
 
 from ansible.plugins.action import ActionBase
@@ -62,7 +61,7 @@ class IDumper(AnsibleDumper):
         return super(IDumper, self).increase_indent(flow, False)
 
 
-class MultiKeyDict(OrderedDict):
+class MultiKeyDict(dict):
     """Dictionary class which supports duplicate keys.
     This class allows for an item to be added into a standard python dictionary
     however if a key is created more than once the dictionary will convert the
@@ -81,46 +80,36 @@ class MultiKeyDict(OrderedDict):
     """
 
     def index(self, key):
-        index_search = [
-            i for i, item in enumerate(self) if item.startswith(key)
-        ]
-        if len(index_search) > 1:
-            raise SystemError('Index search returned more than one value')
-        return index_search[0]
+        for i, item in enumerate(self):
+            if item.startswith(key):
+                return i
+        raise ValueError(f"{key} not in MultiKeyDict")
 
     def insert(self, index, key, value):
-        list(self)[index]  # Validates the index
         shadow = MultiKeyDict()
-        counter = 0
-        for k, v in self.items():
-            if counter == index:
-                shadow[k] = v
+        for i, (k, v) in enumerate(self.items()):
+            shadow[k] = v
+            if i == index:
                 shadow[key] = value
-            else:
-                shadow[k] = v
-            counter += 1
         else:
+            if index >= len(self) and key not in shadow:
+                shadow[key] = value
             return shadow
 
-    def update(self, E=None, **kwargs):
-        for key, value in E.items():
-            super(MultiKeyDict, self).__setitem__(key, value)
 
     def __setitem__(self, key, value):
         if key in self:
             if isinstance(self[key], tuple):
                 items = self[key]
                 if str(value) not in items:
-                    items += tuple([str(value)])
-                    super(MultiKeyDict, self).__setitem__(key, items)
+                    value = items + tuple([str(value)])
             elif isinstance(self[key], MultiKeyDict):
                 pass
             else:
                 if str(self[key]) != str(value):
-                    items = tuple([str(self[key]), str(value)])
-                    super(MultiKeyDict, self).__setitem__(key, items)
-        else:
-            return super(MultiKeyDict, self).__setitem__(key, value)
+                    value = tuple([str(self[key]), str(value)])
+
+        super(MultiKeyDict, self).__setitem__(key, value)
 
 
 class ConfigTemplateParser(configparser.RawConfigParser):
@@ -218,11 +207,12 @@ class ConfigTemplateParser(configparser.RawConfigParser):
         def _return_entry(option, item):
             # If we have item, we consider it as a config parameter with value
             if item is not None:
-                return "%s = %s\n" % (option, str(item).replace('\n', '\n\t'))
+                str_item = str(item).replace('\n', '\n\t')
+                return f"{option} = {str_item}\n"
             elif not option:
                 return option
             else:
-                return "%s\n" % option
+                return f"{option}\n"
 
         key = key.split(STRIP_MARKER)[0]
         if isinstance(value, (tuple, set)):
@@ -230,8 +220,8 @@ class ConfigTemplateParser(configparser.RawConfigParser):
                 entry = _return_entry(option=key, item=i)
                 self._write(fp, section, key, i, entry)
         elif isinstance(value, list):
-            _value = [str(i.replace('\n', '\n\t')) for i in value]
-            entry = '%s = %s\n' % (key, ','.join(_value))
+            _value = [str(i).replace('\n', '\n\t') for i in value]
+            entry = f"{key} = {','.join(_value)}\n"
             self._write(fp, section, key, value, entry)
         else:
             entry = _return_entry(option=key, item=value)
@@ -239,7 +229,7 @@ class ConfigTemplateParser(configparser.RawConfigParser):
 
     def write(self, fp, **kwargs):
         def _do_write(section_name, section, section_bool=False):
-            fp.write("[%s]\n" % section_name)
+            fp.write(f"[{section_name}]\n")
             for key, value in section.items():
                 self._write_check(
                     fp,
@@ -264,10 +254,6 @@ class ConfigTemplateParser(configparser.RawConfigParser):
             _do_write(i, self._sections[i], section_bool=True)
 
     def _read(self, fp, fpname):
-        def _temp_set():
-            _temp_item = [cursect[optname]]
-            cursect.update({optname: _temp_item})
-
         optname = None
         cursect = {}
         marker_counter = 0
@@ -473,10 +459,10 @@ class ActionModule(ActionBase):
 
         config_object.close()
 
-        config_dict_new = OrderedDict()
+        config_dict_new = dict()
         config_defaults = config.defaults()
         for s in config.sections():
-            config_dict_new[s] = OrderedDict()
+            config_dict_new[s] = dict()
             for k, v in config.items(s):
                 if k not in config_defaults or config_defaults[k] != v:
                     config_dict_new[s][k] = v
@@ -495,20 +481,20 @@ class ActionModule(ActionBase):
 
     @staticmethod
     def _option_write(config, section, key, value):
-        config.remove_option(str(section), str(key))
-        try:
-            if not any(list(value.values())):
+        s_section = str(section)
+        s_key = str(key)
+        config.remove_option(s_section, s_key)
+        if isinstance(value, dict):
+            # If a dict is passed, check if it's effectively empty (no true values)
+            if not any(value.values()):
                 value = tuple(value.keys())
-        except AttributeError:
-            pass
+
         if isinstance(value, (tuple, set)):
-            config.set(str(section), str(key), value)
-        elif isinstance(value, set):
-            config.set(str(section), str(key), value)
+            config.set(s_section, s_key, value)
         elif isinstance(value, list):
-            config.set(str(section), str(key), ','.join(str(i) for i in value))
+            config.set(s_section, s_key, ','.join(map(str, value)))
         else:
-            config.set(str(section), str(key), str(value))
+            config.set(s_section, s_key, str(value))
 
     def return_config_overrides_json(self,
                                      config_overrides,
@@ -742,7 +728,7 @@ class ActionModule(ActionBase):
             if not value:
                 continue
             key = key.split(STRIP_MARKER)[0]
-            if isinstance(value, (OrderedDict, MultiKeyDict, dict)):
+            if isinstance(value, (dict, MultiKeyDict)):
                 return_dict[key] = self.resultant_ini_as_dict(value)
             else:
                 return_dict[key] = value
