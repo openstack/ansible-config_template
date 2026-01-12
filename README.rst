@@ -7,12 +7,9 @@ with the ability to override items in config, in transit, through the use
 of a simple dictionary without having to write out various temp files on target
 machines.
 
-WARNING
-~~~~~~~
-
-Installation from PyPI or as a Python module is deprecated and will be removed
-in future releases.
-Please, use ansible-galaxy to install the collection.
+Please, use ansible-galaxy to install the collection, more details in
+documentation:
+  https://docs.openstack.org/ansible-config_template/latest/
 
 ==================================
 More infromation about the project
