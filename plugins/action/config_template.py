@@ -747,26 +747,24 @@ class ActionModule(ActionBase):
                     'block_start_string', 'block_end_string'
                 ] if extra.get(k)
             }
+            template_kwargs = dict(
+                preserve_trailing_newlines=True,
+                escape_backslashes=False,
+                overrides=overrides
+            )
+
             if LooseVersion(__ansible_version__) >= LooseVersion('2.19'):
                 data = trust_as_template(data)
+
+            if LooseVersion(__ansible_version__) < LooseVersion('2.17'):
+                template_kwargs['convert_data'] = False
+
             if hasattr(templar, 'copy_with_new_env'):
                 templar = templar.copy_with_new_env(**t_vars)
-                return templar.template(
-                    data,
-                    preserve_trailing_newlines=True,
-                    escape_backslashes=False,
-                    convert_data=False,
-                    overrides=overrides
-                )
+                return templar.template(data, **template_kwargs)
             else:
                 with templar.set_temporary_context(**t_vars):
-                    return templar.template(
-                        data,
-                        preserve_trailing_newlines=True,
-                        escape_backslashes=False,
-                        convert_data=False,
-                        overrides=overrides
-                    )
+                    return templar.template(data, **template_kwargs)
         else:
             return data
 
