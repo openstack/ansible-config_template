@@ -233,6 +233,40 @@
     that:
       - _enhanced_comments_file == _enhanced_comments_expected_file
 
+# Test MultiKey preservation and update
+- name: Test MultiKey preservation and update
+  config_template:
+    src: test_multikey_update.ini
+    dest: /tmp/test_multikey_update.ini
+    config_overrides:
+      multi:
+        key2: val4
+    config_type: ini
+
+- name: Read test_multikey_update.ini
+  slurp:
+    src: /tmp/test_multikey_update.ini
+  register: test_multikey_update
+
+- name: Create expected multikey file
+  copy:
+    src: files/test_multikey_update.ini.expected
+    dest: /tmp/test_multikey_update.ini.expected
+
+- name: Read test_multikey_update.ini.expected
+  slurp:
+    src: /tmp/test_multikey_update.ini.expected
+  register: test_multikey_update_expected
+
+- name: Set content facts
+  set_fact:
+    _multikey_update_file: "{{ (test_multikey_update.content | b64decode).strip() }}"
+    _multikey_update_expected_file: "{{ (test_multikey_update_expected.content | b64decode).strip() }}"
+
+- name: Compare files
+  assert:
+    that:
+      - _multikey_update_file == _multikey_update_expected_file
 
 # Test setting a default_section
 - name: Template using default_section

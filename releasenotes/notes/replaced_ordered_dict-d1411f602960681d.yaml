@@ -1,0 +1,5 @@
+---
+other:
+  - |
+    MultiKeyDict is now using default dict() instead of OrderedDict as it is
+    faster and more memory efficient. No behavior changes are expected.
