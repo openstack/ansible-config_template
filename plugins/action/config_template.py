@@ -31,10 +31,16 @@ from io import StringIO
 
 from ansible.plugins.action import ActionBase
 from ansible.module_utils._text import to_bytes, to_text
+from ansible.module_utils.compat.version import LooseVersion
 from ansible.module_utils.parsing.convert_bool import boolean
 from ansible import constants as C
 from ansible import errors
-from ansible.parsing.yaml.dumper import AnsibleDumper
+try:
+    from ansible._internal._yaml._dumper import AnsibleDumper
+    from ansible.template import trust_as_template
+except ImportError:
+    from ansible.parsing.yaml.dumper import AnsibleDumper
+
 from ansible import __version__ as __ansible_version__
 
 __metaclass__ = type
@@ -706,10 +712,10 @@ class ActionModule(ActionBase):
         remote_src = self._task.args.get('remote_src', False)
 
         yml_multilines = self._task.args.get('yml_multilines', False)
-        block_end_string = self._task.args.get('block_end_string', '%}')
-        block_start_string = self._task.args.get('block_start_string', '{%')
-        variable_end_string = self._task.args.get('variable_end_string', '}}')
-        variable_start_string = self._task.args.get('variable_start_string', '{{')
+        block_end_string = self._task.args.get('block_end_string')
+        block_start_string = self._task.args.get('block_start_string')
+        variable_end_string = self._task.args.get('variable_end_string')
+        variable_start_string = self._task.args.get('variable_start_string')
 
         return True, dict(
             source=source,
@@ -746,19 +752,35 @@ class ActionModule(ActionBase):
     def _check_templar(self, data, extra):
         if boolean(self._task.args.get('render_template', True)):
             templar = self._templar
-            with templar.set_temporary_context(
-                variable_start_string=extra['variable_start_string'],
-                variable_end_string=extra['variable_end_string'],
-                block_start_string=extra['block_start_string'],
-                block_end_string=extra['block_end_string'],
-                searchpath=extra['searchpath']
-            ):
+            t_vars = {
+                'searchpath': extra['searchpath']
+            }
+            overrides = {
+                k: extra[k] for k in [
+                    'variable_start_string', 'variable_end_string',
+                    'block_start_string', 'block_end_string'
+                ] if extra.get(k)
+            }
+            if LooseVersion(__ansible_version__) >= LooseVersion('2.19'):
+                data = trust_as_template(data)
+            if hasattr(templar, 'copy_with_new_env'):
+                templar = templar.copy_with_new_env(**t_vars)
                 return templar.template(
                     data,
                     preserve_trailing_newlines=True,
                     escape_backslashes=False,
-                    convert_data=False
+                    convert_data=False,
+                    overrides=overrides
                 )
+            else:
+                with templar.set_temporary_context(**t_vars):
+                    return templar.template(
+                        data,
+                        preserve_trailing_newlines=True,
+                        escape_backslashes=False,
+                        convert_data=False,
+                        overrides=overrides
+                    )
         else:
             return data
 

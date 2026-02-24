@@ -1,0 +1,4 @@
+---
+features:
+  - |
+    Added support for Ansible Core 2.19
