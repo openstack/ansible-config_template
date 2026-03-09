@@ -17,7 +17,7 @@
 
 # Test basic ini template
 - name: Template test INI template
-  config_template:
+  openstack.config_template.config_template:
     src: "{{ playbook_dir }}/templates/test.ini"
     dest: "/tmp/test.ini"
     config_overrides: "{{ test_config_ini_overrides }}"
@@ -49,7 +49,7 @@
 
 # Test basic function of config_template with content instead of src
 - name: Template test INI template
-  config_template:
+  openstack.config_template.config_template:
     content: "{{ lookup('file', playbook_dir + '/templates/test.ini') }}"
     dest: "/tmp/test_with_content.ini"
     config_overrides: "{{ test_config_ini_overrides }}"
@@ -81,7 +81,7 @@
 
 # Test multistropt ordering
 - name: Template MultiStrOpts using overrides
-  config_template:
+  openstack.config_template.config_template:
     src: test_multistropts.ini
     dest: /tmp/test_multistropts.ini
     config_overrides:
@@ -125,7 +125,7 @@
 
 # Test remote_src
 - name: Template remote source using overrides
-  config_template:
+  openstack.config_template.config_template:
     src: /tmp/test_multistropts.ini
     dest: /tmp/test_remote_src_multistropts.ini
     remote_src: true
@@ -170,7 +170,7 @@
 
 # Test the ignore_none_type attribute when set to False
 - name: Template test with ignore_none_type set to false
-  config_template:
+  openstack.config_template.config_template:
     src: "{{ playbook_dir }}/templates/test_ignore_none_type.ini"
     dest: "/tmp/test_ignore_none_type.ini"
     config_overrides: "{{ test_config_ini_overrides }}"
@@ -194,7 +194,7 @@
 
 # Test enhanced comments
 - name: Template test INI template
-  config_template:
+  openstack.config_template.config_template:
     content: "{{ lookup('file', playbook_dir + '/templates/test_comment_configs.ini') }}"
     dest: "/tmp/test_comment_configs.ini"
     config_overrides: "{{ test_enhanced_comments_ini_overrides }}"
@@ -235,7 +235,7 @@
 
 # Test MultiKey preservation and update
 - name: Test MultiKey preservation and update
-  config_template:
+  openstack.config_template.config_template:
     src: test_multikey_update.ini
     dest: /tmp/test_multikey_update.ini
     config_overrides:
@@ -270,7 +270,7 @@
 
 # Test setting a default_section
 - name: Template using default_section
-  config_template:
+  openstack.config_template.config_template:
     src: "{{ playbook_dir }}/templates/test_default_section.ini"
     dest: "/tmp/test_default_section.ini"
     config_type: "ini"
@@ -316,14 +316,14 @@
   block:
     # Check output diff
     - name: Write ini for testing diff output
-      config_template:
+      openstack.config_template.config_template:
         src: "{{ playbook_dir }}/templates/test_diff.ini"
         dest: "/tmp/test_diff.ini"
         config_type: "ini"
         config_overrides: {}
 
     - name: Test ini with additions and changed
-      config_template:
+      openstack.config_template.config_template:
         src: "{{ playbook_dir }}/templates/test_diff.ini"
         dest: "/tmp/test_diff.ini"
         config_type: "ini"
@@ -332,7 +332,7 @@
       notify: test_diff_ini check diff
 
     - name: Test ini with removes
-      config_template:
+      openstack.config_template.config_template:
         src: "{{ playbook_dir }}/templates/test_diff_remove.ini"
         dest: "/tmp/test_diff.ini"
         config_type: "ini"
@@ -342,7 +342,7 @@
 
 # Check if {% raw %} is working
 - name: Test template with jinja vars in it
-  config_template:
+  openstack.config_template.config_template:
     src: "{{ playbook_dir }}/templates/test_raw_content.ini"
     dest: "/tmp/test_raw_content.ini"
     config_overrides: "{{ test_raw_content_overrides }}"
@@ -351,7 +351,7 @@
   diff: false
 
 - name: Test content with jinja vars in it
-  config_template:
+  openstack.config_template.config_template:
     content: |
       #jinja2:variable_start_string:'[%', variable_end_string:'%]'
 

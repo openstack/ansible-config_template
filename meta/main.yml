@@ -18,21 +18,21 @@ galaxy_info:
   description: Plugin collection
   company: Rackspace
   license: Apache2
-  min_ansible_version: 2.3.0
+  min_ansible_version: 2.9.0
   platforms:
     - name: Debian
       versions:
-        - buster
+        - bookworm
+        - trixie
     - name: Ubuntu
       versions:
-        - bionic
-        - focal
+        - jammy
+        - noble
     - name: EL
       versions:
-        - 8
+        - "10"
   galaxy_tags:
     - cloud
-    - rabbitmq
     - development
     - openstack
 dependencies: []

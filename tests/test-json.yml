@@ -17,7 +17,7 @@
 
 # Test content attribute with a dictionary input and config_type equal to 'json'
 - name: Template test JSON template with content attribute
-  config_template:
+  openstack.config_template.config_template:
     dest: "/tmp/test_content_no_overrides.json"
     config_overrides: {}
     config_type: "json"
@@ -48,7 +48,7 @@
 # Values containing newlines should not be chopped into a list
 # when yml_multilines is set to True
 - name: Test multiline strings in json
-  config_template:
+  openstack.config_template.config_template:
     src: "{{ playbook_dir }}/templates/test_multiline_strs.json"
     dest: "/tmp/multiline_strs.json"
     config_overrides: "{{ test_multiline_strs_json_overrides }}"

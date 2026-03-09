@@ -1,0 +1,10 @@
+---
+deprecations:
+  - |
+    Usage of config_tempalate as ansible plugin is deprecated starting version
+    2.0.0. From now on it's installable only as Ansible collection.
+  - |
+    The ansible<2.9 is not longer supported by the collection.
+  - |
+    The module is no longer published to Pypi and can not be installed as a
+    Python module
