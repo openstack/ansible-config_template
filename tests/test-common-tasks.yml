@@ -15,6 +15,11 @@
 #
 # Test basic function of config_template
 
-- import_tasks: test-ini.yml
-- import_tasks: test-yaml.yml
-- import_tasks: test-json.yml
+- name: Import ini tests
+  ansible.builtin.import_tasks: test-ini.yml
+
+- name: Import yaml tests
+  ansible.builtin.import_tasks: test-yaml.yml
+
+- name: Import json tests
+  ansible.builtin.import_tasks: test-json.yml

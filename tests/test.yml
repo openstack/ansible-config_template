@@ -15,7 +15,7 @@
 
 - name: Test config_template
   hosts: all
-  gather_facts: yes
+  gather_facts: true
 
   tasks:
 
@@ -23,82 +23,83 @@
       delegate_to: localhost
       block:
         - name: Read expected test_extend.yml
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_extend.yml.expected"
           register: extend_file_expected
 
         - name: Read expected test_no_extend.yml
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_no_extend.yml.expected"
           register: no_extend_file_expected
 
         - name: Read expected test_content_no_overrides.json
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_content_no_overrides.json.expected"
           register: content_no_overrides_file_expected
 
         - name: Read expected test_multiline_strs.yml
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_multiline_strs.yml.expected"
           register: multiline_strs_file_expected
 
         - name: Read expected test_multiline_strs.yml
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_multiline_strs.json.expected"
           register: multiline_strs_json_file_expected
 
         - name: Read expected test_list_only_extend.yml
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_list_only_extend.yml.expected"
           register: test_list_only_extend_file_expected
 
         - name: Read expected test_list_only_replace.yml
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_list_only_replace.yml.expected"
           register: test_list_only_replace_file_expected
 
         - name: Read expected test_jinja_variables.yml
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_jinja_variables.yml.expected"
           register: test_jinja_variables_expected
 
         - name: Read expected test_jinja_variables.yml
-          slurp:
+          ansible.builtin.slurp:
             src: "{{ playbook_dir }}/files/test_raw_content.ini.expected"
           register: test_raw_content_expected
 
-    - import_tasks: test-common-tasks.yml
+    - name: Import test-common-tasks
+      ansible.builtin.import_tasks: test-common-tasks.yml
 
   handlers:
-    - name: test_extend_yml check diff
-      assert:
+    - name: Test_extend_yml check diff
+      ansible.builtin.assert:
         that:
           - test_extend_yml.diff[0].prepared|from_json == diff_extend_yml
 
-    - name: test_no_extend_yml check diff
-      assert:
+    - name: Test_no_extend_yml check diff
+      ansible.builtin.assert:
         that:
           - test_no_extend_yml.diff[0].prepared|from_json == diff_no_extend_yml
 
-    - name: test_hostvars_yml check diff
-      assert:
+    - name: Test_hostvars_yml check diff
+      ansible.builtin.assert:
         that:
           - test_hostvars_yml.diff[0].prepared|from_yaml == diff_hostvars_yml
 
-    - name: test_content_no_overrides_json check diff
-      assert:
+    - name: Test_content_no_overrides_json check diff
+      ansible.builtin.assert:
         that:
           - test_content_no_overrides_json.diff[0].prepared|from_json == diff_content_no_overrides_json
 
-    - name: test_diff_ini check diff
+    - name: Test_diff_ini check diff
       tags: test
-      assert:
+      ansible.builtin.assert:
         that:
           - test_diff_ini.diff[0].prepared|from_json == diff_diff_ini
 
-    - name: test_diff_remove_ini check diff
+    - name: Test_diff_remove_ini check diff
       tags: test
-      assert:
+      ansible.builtin.assert:
         that:
           - test_diff_remove_ini.diff[0].prepared|from_json == diff_diff_remove_ini
 
