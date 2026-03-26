@@ -725,7 +725,7 @@ class ActionModule(ActionBase):
             return_dict = {}
 
         for key, value in resultant_dict.items():
-            if not value:
+            if value is None:
                 continue
             key = key.split(STRIP_MARKER)[0]
             if isinstance(value, (dict, MultiKeyDict)):

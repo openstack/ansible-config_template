@@ -23,8 +23,6 @@
     config_overrides: "{{ test_config_ini_overrides }}"
     config_type: "ini"
     mode: "0644"
-  # NOTE(jrosser) the input template has an empty [bar] section which is removed in the output, failing idempotency
-  diff: false
 
 - name: Read test.ini
   ansible.builtin.slurp:
@@ -50,15 +48,13 @@
       - _ini_file['foo']['baz'] == 'bar'
 
 # Test basic function of config_template with content instead of src
-- name: Template test INI template
+- name: Template test INI template with content
   openstack.config_template.config_template:
     content: "{{ lookup('file', playbook_dir + '/templates/test.ini') }}"
     dest: "/tmp/test_with_content.ini"
     config_overrides: "{{ test_config_ini_overrides }}"
     config_type: "ini"
     mode: "0644"
-  # NOTE(jrosser) the input template has an empty [bar] section which is removed in the output, failing idempotency
-  diff: false
 
 - name: Read test_with_content.ini
   ansible.builtin.slurp:

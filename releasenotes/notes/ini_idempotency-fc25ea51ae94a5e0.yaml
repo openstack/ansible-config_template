@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    Fixed idempotency issue with INI templates when using the module,
+    and Ansible runs with ``--diff``.
+    While no actual changes were written to disk, tasks state was reported as
+    changed.
