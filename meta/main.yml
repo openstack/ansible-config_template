@@ -18,7 +18,7 @@ galaxy_info:
   description: Plugin collection
   company: Rackspace
   license: Apache2
-  min_ansible_version: 2.9.0
+  min_ansible_version: 2.10.0
   platforms:
     - name: Debian
       versions:
