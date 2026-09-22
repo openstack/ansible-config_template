@@ -1,9 +1,7 @@
 ---
 dependency:
   name: galaxy
-  options:
-    requirements-file: requirements.yml
-    force: true
+  enabled: false
 
 driver:
   name: docker
@@ -27,7 +25,7 @@ provisioner:
     defaults:
       inject_facts_as_vars: false
   options:
-    diff: True
+    diff: true
 
 scenario:
   name: default
