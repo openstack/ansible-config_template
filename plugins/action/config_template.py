@@ -29,7 +29,7 @@ import tempfile as tmpfilelib
 from io import StringIO
 
 from ansible.plugins.action import ActionBase
-from ansible.module_utils._text import to_bytes, to_text
+from ansible.module_utils.common.text.converters import to_bytes, to_text
 from ansible.module_utils.compat.version import LooseVersion
 from ansible.module_utils.parsing.convert_bool import boolean
 from ansible import constants as C

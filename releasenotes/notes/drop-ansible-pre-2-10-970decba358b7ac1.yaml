@@ -1,0 +1,4 @@
+---
+upgrade:
+  - |
+    The minimum supported version of ``ansible-core`` is now 2.10.
